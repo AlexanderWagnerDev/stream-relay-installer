@@ -9,7 +9,7 @@ cat <<"EOF"
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
  |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
-                                                         |___/                                                                                              
+                                                         |___/                                                                          
            von AlexanderWagnerDev
 EOF
 }
@@ -156,6 +156,9 @@ if [[ "$install_srtla" =~ ^[JjYy] ]]; then
   if ! docker volume inspect srtla-server >/dev/null 2>&1; then
     docker volume create srtla-server
   fi
+  volume_data_path="/var/lib/docker/volumes/srtla-server/_data"
+  sudo chown 3001:3001 "$volume_data_path"
+  sudo chmod 755 "$volume_data_path"
   docker pull alexanderwagnerdev/srtla-server:latest
   docker rm -f srtla-receiver 2>/dev/null || true
   docker run -d --name srtla-receiver --restart unless-stopped -v srtla-server:/var/lib/sls -p 5000:5000/udp -p 4000:4000/udp -p 4001:4001/udp -p 8080:8080 alexanderwagnerdev/srtla-server:latest
