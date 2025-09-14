@@ -18,7 +18,7 @@ cat <<"EOF"
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
  |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
-                                                         |___/                                                                                              
+                                                         |___/                                                                                                
            von AlexanderWagnerDev
 EOF
 }
@@ -30,7 +30,7 @@ cat <<"EOF"
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
  |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
-                                                         |___/                                                                                    
+                                                         |___/                                                                                                                            
            by AlexanderWagnerDev
 EOF
 }
@@ -40,7 +40,6 @@ function install_docker_debian_ubuntu() {
   local distro_version
   distro_name=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
   distro_version=$(lsb_release -rs)
-
   sudo apt-get update
   sudo apt-get install -y \
     apt-transport-https \
@@ -48,14 +47,15 @@ function install_docker_debian_ubuntu() {
     curl \
     gnupg-agent \
     software-properties-common
-
+    
   curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-
+  
   local repo_file="docker.list"
   local repo_entry="deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg]"
+  
   local codename
   codename=$(lsb_release -cs)
-
+  
   if [[ "$distro_name" == "ubuntu" ]]; then
     if dpkg --compare-versions "$distro_version" ge "24.04"; then
       repo_file="docker.source"
@@ -73,9 +73,8 @@ function install_docker_debian_ubuntu() {
   else
     repo_entry="deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $codename stable"
   fi
-
   echo "$repo_entry" | sudo tee /etc/apt/sources.list.d/$repo_file
-
+  
   sudo apt-get update
   sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   sudo systemctl enable docker
@@ -145,11 +144,9 @@ function extract_api_key() {
   echo "$apikey"
 }
 
-
 function print_available_services() {
   local app_url="$1"
   local management_port="$2"
-
   if [[ "$lang" == "de" ]]; then
     echo -e "${HEADER}Verfügbare Dienste:${NC}"
     echo -e "${SUCCESS}Management UI: http://${public_ip}:${management_port}${NC}"
@@ -158,7 +155,7 @@ function print_available_services() {
     echo -e "${SUCCESS}SRT Sender Port: ${srt_sender_port}/udp${NC}"
     echo -e "${SUCCESS}SRT Player Port: ${srt_player_port}/udp${NC}"
     echo -e "${SUCCESS}Statistics Port: ${sls_stats_port}/tcp${NC}"
-    echo -e "${SUCCESS}RTMP Server Ports: Stats/Web ${rtmp_stats_port}/tcp${NC}"
+    echo -e "${SUCCESS}RTMP Stats/Web Port: ${rtmp_stats_port}/tcp${NC}"
     echo -e "${SUCCESS}RTMP Port: ${rtmp_port}/tcp${NC}"
   else
     echo -e "${HEADER}Available services:${NC}"
@@ -168,7 +165,7 @@ function print_available_services() {
     echo -e "${SUCCESS}SRT Sender Port: ${srt_sender_port}/udp${NC}"
     echo -e "${SUCCESS}SRT Player Port: ${srt_player_port}/udp${NC}"
     echo -e "${SUCCESS}Statistics Port: ${sls_stats_port}/tcp${NC}"
-    echo -e "${SUCCESS}RTMP Server Ports: Stats/Web ${rtmp_stats_port}/tcp${NC}"
+    echo -e "${SUCCESS}RTMP Stats/Web Port: ${rtmp_stats_port}/tcp${NC}"
     echo -e "${SUCCESS}RTMP Port: ${rtmp_port}/tcp${NC}"
   fi
 }
@@ -273,7 +270,6 @@ fi
 
 read -rp "$use_default_ports_prompt " use_default_ports
 use_default_ports=${use_default_ports:-y}
-
 if [[ "$use_default_ports" =~ ^[JjYy] ]]; then
   srt_player_port=4000
   srt_sender_port=4001
@@ -320,47 +316,47 @@ if [[ "$install_srtla" =~ ^[JjYy] ]]; then
     alexanderwagnerdev/srtla-server:latest
 
   if [ ! -f ".apikey" ]; then
-  if [[ "$lang" == "de" ]]; then
-    echo -e "${INFO}Warte auf vollständiges Initialisieren des Containers...${NC}"
-  else
-    echo -e "${INFO}Waiting for the container to fully initialize...${NC}"
-  fi
-  sleep 5
-  if [[ "$lang" == "de" ]]; then
-    echo -e "${INFO}Versuche API-Key zu extrahieren...${NC}"
-  else
-    echo -e "${INFO}Trying to extract API key...${NC}"
-  fi
-  apikey=$(extract_api_key)
-  if [[ -n "$apikey" ]]; then
-    echo "$apikey" > .apikey
     if [[ "$lang" == "de" ]]; then
-      echo -e "${SUCCESS}API-Key erfolgreich extrahiert und gespeichert.${NC}"
+      echo -e "${INFO}Warte auf vollständiges Initialisieren des Containers...${NC}"
     else
-      echo -e "${SUCCESS}API key successfully extracted and saved.${NC}"
+      echo -e "${INFO}Waiting for the container to fully initialize...${NC}"
+    fi
+    sleep 5
+    if [[ "$lang" == "de" ]]; then
+      echo -e "${INFO}Versuche API-Key zu extrahieren...${NC}"
+    else
+      echo -e "${INFO}Trying to extract API key...${NC}"
+    fi
+    apikey=$(extract_api_key)
+    if [[ -n "$apikey" ]]; then
+      echo "$apikey" > .apikey
+      if [[ "$lang" == "de" ]]; then
+        echo -e "${SUCCESS}API-Key erfolgreich extrahiert und gespeichert.${NC}"
+      else
+        echo -e "${SUCCESS}API key successfully extracted and saved.${NC}"
+      fi
+    else
+      if [[ "$lang" == "de" ]]; then
+        echo -e "${ERROR}API-Key konnte nicht extrahiert werden.${NC}"
+      else
+        echo -e "${ERROR}API key could not be extracted.${NC}"
+      fi
     fi
   else
     if [[ "$lang" == "de" ]]; then
-      echo -e "${ERROR}API-Key konnte nicht extrahiert werden.${NC}"
+      echo -e "${SUCCESS}API-Key bereits vorhanden in .apikey${NC}"
     else
-      echo -e "${ERROR}API key could not be extracted.${NC}"
+      echo -e "${SUCCESS}API key already present in .apikey${NC}"
     fi
   fi
-else
-  if [[ "$lang" == "de" ]]; then
-    echo -e "${SUCCESS}API-Key bereits vorhanden in .apikey${NC}"
-  else
-    echo -e "${SUCCESS}API key already present in .apikey${NC}"
-  fi
-fi
 
-public_ip=$(get_public_ip)
-
-if [[ "$public_ip" == "127.0.0.1" ]]; then
-  if [[ "$lang" == "de" ]]; then
-    echo -e "${YELLOW}Warnung: Öffentliche IP konnte nicht ermittelt werden, localhost wird als APP_URL benutzt.${NC}"
-  else
-    echo -e "${YELLOW}Warning: Public IP could not be determined, localhost will be used as APP_URL.${NC}"
+  public_ip=$(get_public_ip)
+  if [[ "$public_ip" == "127.0.0.1" ]]; then
+    if [[ "$lang" == "de" ]]; then
+      echo -e "${YELLOW}Warnung: Öffentliche IP konnte nicht ermittelt werden, localhost wird als APP_URL benutzt.${NC}"
+    else
+      echo -e "${YELLOW}Warning: Public IP could not be determined, localhost will be used as APP_URL.${NC}"
+    fi
   fi
   app_url="http://${public_ip}:${sls_stats_port}"
 
