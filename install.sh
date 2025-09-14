@@ -2,6 +2,16 @@
 
 set -e
 
+# Farben für Ausgabe
+RED="\033[0;31m"
+GREEN="\033[0;32m"
+YELLOW="\033[1;33m"
+NC="\033[0m" # No Color
+HEADER="${YELLOW}"
+SUCCESS="${GREEN}"
+ERROR="${RED}"
+INFO="${YELLOW}"
+
 function print_ascii_art_de() {
 cat <<"EOF"
   ____  _                              ____      _               ___           _        _ _           
@@ -9,7 +19,7 @@ cat <<"EOF"
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
  |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
-                                                         |___/                                                                                           
+                                                         |___/                                                                                              
            von AlexanderWagnerDev
 EOF
 }
@@ -21,7 +31,7 @@ cat <<"EOF"
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
  |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
-                                                         |___/                                                                                   
+                                                         |___/                                                                                    
            by AlexanderWagnerDev
 EOF
 }
@@ -109,17 +119,62 @@ function get_public_ip() {
 function docker_pull_fallback() {
   local image="$1"
   local fallback_image="$2"
-
   if docker pull "$image"; then
     return 0
   else
-    echo "Warnung: Image '$image' nicht von Docker Hub gefunden, versuche Fallback GHCR..."
+    if [[ "$lang" == "de" ]]; then
+      echo -e "${YELLOW}Warnung: Image '$image' nicht von Docker Hub gefunden, versuche Fallback GHCR...${NC}"
+    else
+      echo -e "${YELLOW}Warning: Image '$image' not found on Docker Hub, trying fallback GHCR...${NC}"
+    fi
     if docker pull "$fallback_image"; then
       return 0
     else
-      echo "Fehler: Image konnte weder von Docker Hub noch GHCR gezogen werden: $image / $fallback_image"
+      if [[ "$lang" == "de" ]]; then
+        echo -e "${RED}Fehler: Image konnte weder von Docker Hub noch GHCR gezogen werden: $image / $fallback_image${NC}"
+      else
+        echo -e "${RED}Error: Image could not be pulled from Docker Hub nor GHCR: $image / $fallback_image${NC}"
+      fi
       return 1
     fi
+  fi
+}
+
+function extract_api_key() {
+  local log_text
+  log_text=$(docker logs srtla-receiver 2>/dev/null || echo "")
+  if echo "$log_text" | grep -qE "API Key: [a-zA-Z0-9]+"; then
+    local apikey=$(echo "$log_text" | grep -Eo "API Key: [a-zA-Z0-9]+" | head -n1 | awk '{print $3}')
+    echo "$apikey"
+  else
+    echo ""
+  fi
+}
+
+function print_available_services() {
+  local app_url="$1"
+  local management_port="$2"
+
+  if [[ "$lang" == "de" ]]; then
+    echo -e "${HEADER}Verfügbare Dienste:${NC}"
+    echo -e "${SUCCESS}Management UI: http://${public_ip}:${management_port}${NC}"
+    echo -e "${SUCCESS}Backend API: ${app_url}${NC}"
+    echo -e "${SUCCESS}SRTla Port: ${srtla_port}/udp${NC}"
+    echo -e "${SUCCESS}SRT Sender Port: ${srt_sender_port}/udp${NC}"
+    echo -e "${SUCCESS}SRT Player Port: ${srt_player_port}/udp${NC}"
+    echo -e "${SUCCESS}Statistics Port: ${sls_stats_port}/tcp${NC}"
+    echo -e "${SUCCESS}RTMP Server Ports: Stats/Web ${rtmp_stats_port}/tcp${NC}"
+    echo -e "${SUCCESS}RTMP Port: ${rtmp_port}/tcp${NC}"
+  else
+    echo -e "${HEADER}Available services:${NC}"
+    echo -e "${SUCCESS}Management UI: http://${public_ip}:${management_port}${NC}"
+    echo -e "${SUCCESS}Backend API: ${app_url}${NC}"
+    echo -e "${SUCCESS}SRTla Port: ${srtla_port}/udp${NC}"
+    echo -e "${SUCCESS}SRT Sender Port: ${srt_sender_port}/udp${NC}"
+    echo -e "${SUCCESS}SRT Player Port: ${srt_player_port}/udp${NC}"
+    echo -e "${SUCCESS}Statistics Port: ${sls_stats_port}/tcp${NC}"
+    echo -e "${SUCCESS}RTMP Server Ports: Stats/Web ${rtmp_stats_port}/tcp${NC}"
+    echo -e "${SUCCESS}RTMP Port: ${rtmp_port}/tcp${NC}"
   fi
 }
 
@@ -201,26 +256,25 @@ fi
 read -rp "$docker_prompt " install_docker
 install_docker=${install_docker:-n}
 if [[ "$install_docker" =~ ^[JjYy] ]]; then
-  echo "$docker_install_msg"
+  echo -e "$docker_install_msg"
   distro_info=$(lsb_release -a 2>/dev/null || cat /etc/os-release)
   install_docker_debian_ubuntu "$distro_info"
 else
-  echo "$docker_skip_msg"
+  echo -e "$docker_skip_msg"
 fi
 
 read -rp "$ipv6_prompt " enable_ipv6
 enable_ipv6=${enable_ipv6:-n}
 if [[ "$enable_ipv6" =~ ^[JjYy] ]]; then
-  echo "$ipv6_enable_msg"
+  echo -e "$ipv6_enable_msg"
   if [ -f /etc/docker/daemon.json ]; then
     sudo cp /etc/docker/daemon.json /etc/docker/daemon.json.bak_$(date +%s)
   fi
   echo '{ "ipv6": true }' | sudo tee /etc/docker/daemon.json > /dev/null
   sudo systemctl restart docker
 else
-  echo "$ipv6_skip_msg"
+  echo -e "$ipv6_skip_msg"
 fi
-
 
 read -rp "$use_default_ports_prompt " use_default_ports
 use_default_ports=${use_default_ports:-y}
@@ -243,22 +297,21 @@ else
   slsmu_port=$(read_port "${port_prompts[6]}" 3000 "$lang")
 fi
 
-
 read -rp "$rtmp_prompt " install_rtmp
 install_rtmp=${install_rtmp:-n}
 if [[ "$install_rtmp" =~ ^[JjYy] ]]; then
-  echo "$rtmp_install_msg"
+  echo -e "$rtmp_install_msg"
   docker_pull_fallback "alexanderwagnerdev/rtmp-server:latest" "ghcr.io/alexanderwagnerdev/rtmp-server:latest"
   docker rm -f rtmp-server 2>/dev/null || true
   docker run -d --name rtmp-server --restart unless-stopped -p ${rtmp_stats_port}:80 -p ${rtmp_port}:1935 alexanderwagnerdev/rtmp-server:latest
 else
-  echo "$rtmp_skip_msg"
+  echo -e "$rtmp_skip_msg"
 fi
 
 read -rp "$srtla_prompt " install_srtla
 install_srtla=${install_srtla:-n}
 if [[ "$install_srtla" =~ ^[JjYy] ]]; then
-  echo "$srtla_install_msg"
+  echo -e "$srtla_install_msg"
   if ! docker volume inspect srtla-server >/dev/null 2>&1; then
     docker volume create srtla-server
   fi
@@ -271,9 +324,24 @@ if [[ "$install_srtla" =~ ^[JjYy] ]]; then
     -p ${srt_player_port}:4000/udp -p ${srt_sender_port}:4001/udp -p ${srtla_port}:5000/udp -p ${sls_stats_port}:8080 \
     alexanderwagnerdev/srtla-server:latest
 
+  if [ ! -f ".apikey" ]; then
+    echo -e "${INFO}Warte auf vollständiges Initialisieren des Containers...${NC}"
+    sleep 5
+    echo -e "${INFO}Versuche API-Key zu extrahieren...${NC}"
+    apikey=$(extract_api_key)
+    if [[ -n "$apikey" ]]; then
+      echo "$apikey" > .apikey
+      echo -e "${SUCCESS}API-Key erfolgreich extrahiert und gespeichert.${NC}"
+    else
+      echo -e "${ERROR}API-Key konnte nicht extrahiert werden.${NC}"
+    fi
+  else
+    echo -e "${SUCCESS}API-Key bereits vorhanden in .apikey${NC}"
+  fi
+
   public_ip=$(get_public_ip)
   if [[ "$public_ip" == "127.0.0.1" ]]; then
-    echo "Warnung: Öffentliche IP konnte nicht ermittelt werden, localhost wird als APP_URL benutzt."
+    echo -e "${YELLOW}Warnung: Öffentliche IP konnte nicht ermittelt werden, localhost wird als APP_URL benutzt.${NC}"
   fi
   app_url="http://${public_ip}:${sls_stats_port}"
 
@@ -282,25 +350,27 @@ if [[ "$install_srtla" =~ ^[JjYy] ]]; then
   docker run -d --name slsmu --restart unless-stopped \
     -p ${slsmu_port}:3000 \
     -e REACT_APP_BASE_URL="${app_url}" \
-    -e REACT_APP_SRT_PLAYER_PORT="${sls_player_port}" \
-    -e REACT_APP_SRT_SENDER_PORT="${sls_publisher_port}" \
+    -e REACT_APP_SRT_PLAYER_PORT="${srt_player_port}" \
+    -e REACT_APP_SRT_SENDER_PORT="${srt_sender_port}" \
     -e REACT_APP_SLS_STATS_PORT="${sls_stats_port}" \
     -e REACT_APP_SRTLA_PORT="${srtla_port}" \
     alexanderwagnerdev/slsmu:latest
+
+  print_available_services "$app_url" "$slsmu_port"
 else
-  echo "$srtla_skip_msg"
+  echo -e "$srtla_skip_msg"
 fi
 
 read -rp "$watchtower_prompt " install_watchtower
 install_watchtower=${install_watchtower:-n}
 if [[ "$install_watchtower" =~ ^[JjYy] ]]; then
-  echo "$watchtower_install_msg"
+  echo -e "$watchtower_install_msg"
   docker_pull_fallback "containrrr/watchtower:latest" "ghcr.io/containrrr/watchtower:latest"
   docker rm -f watchtower 2>/dev/null || true
   docker run -d --name watchtower --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock containrrr/watchtower:latest --cleanup
 else
-  echo "$watchtower_skip_msg"
+  echo -e "$watchtower_skip_msg"
 fi
 
-echo "$done_msg"
-echo "$restart_msg"
+echo -e "$done_msg"
+echo -e "$restart_msg"
