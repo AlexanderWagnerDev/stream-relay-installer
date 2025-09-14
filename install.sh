@@ -5,7 +5,7 @@ set -e
 RED="\033[0;31m"
 GREEN="\033[0;32m"
 YELLOW="\033[1;33m"
-NC="\033[0m" # No Color
+NC="\033[0m"
 HEADER="${YELLOW}"
 SUCCESS="${GREEN}"
 ERROR="${RED}"
@@ -140,15 +140,11 @@ function docker_pull_fallback() {
 }
 
 function extract_api_key() {
-  local log_text
-  log_text=$(docker logs srtla-receiver 2>/dev/null || echo "")
-  if echo "$log_text" | grep -qE "API Key: [a-zA-Z0-9]+"; then
-    local apikey=$(echo "$log_text" | grep -Eo "API Key: [a-zA-Z0-9]+" | head -n1 | awk '{print $3}')
-    echo "$apikey"
-  else
-    echo ""
-  fi
+  local apikey=""
+  apikey=$(docker logs srtla-server 2>/dev/null | grep "Generated default admin API key:" | sed 's/.*Generated default admin API key: \([A-Za-z0-9]*\).*/\1/' | tail -1)
+  echo "$apikey"
 }
+
 
 function print_available_services() {
   local app_url="$1"
@@ -318,8 +314,8 @@ if [[ "$install_srtla" =~ ^[JjYy] ]]; then
   sudo chown 3001:3001 "$volume_data_path"
   sudo chmod 755 "$volume_data_path"
   docker_pull_fallback "alexanderwagnerdev/srtla-server:latest" "ghcr.io/alexanderwagnerdev/srtla-server:latest"
-  docker rm -f srtla-receiver 2>/dev/null || true
-  docker run -d --name srtla-receiver --restart unless-stopped -v srtla-server:/var/lib/sls \
+  docker rm -f srtla-server 2>/dev/null || true
+  docker run -d --name srtla-server --restart unless-stopped -v srtla-server:/var/lib/sls \
     -p ${srt_player_port}:4000/udp -p ${srt_sender_port}:4001/udp -p ${srtla_port}:5000/udp -p ${sls_stats_port}:8080 \
     alexanderwagnerdev/srtla-server:latest
 
