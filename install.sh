@@ -2,7 +2,6 @@
 
 set -e
 
-# Farben für Ausgabe
 RED="\033[0;31m"
 GREEN="\033[0;32m"
 YELLOW="\033[1;33m"
@@ -325,23 +324,47 @@ if [[ "$install_srtla" =~ ^[JjYy] ]]; then
     alexanderwagnerdev/srtla-server:latest
 
   if [ ! -f ".apikey" ]; then
+  if [[ "$lang" == "de" ]]; then
     echo -e "${INFO}Warte auf vollständiges Initialisieren des Containers...${NC}"
-    sleep 5
+  else
+    echo -e "${INFO}Waiting for the container to fully initialize...${NC}"
+  fi
+  sleep 5
+  if [[ "$lang" == "de" ]]; then
     echo -e "${INFO}Versuche API-Key zu extrahieren...${NC}"
-    apikey=$(extract_api_key)
-    if [[ -n "$apikey" ]]; then
-      echo "$apikey" > .apikey
+  else
+    echo -e "${INFO}Trying to extract API key...${NC}"
+  fi
+  apikey=$(extract_api_key)
+  if [[ -n "$apikey" ]]; then
+    echo "$apikey" > .apikey
+    if [[ "$lang" == "de" ]]; then
       echo -e "${SUCCESS}API-Key erfolgreich extrahiert und gespeichert.${NC}"
     else
-      echo -e "${ERROR}API-Key konnte nicht extrahiert werden.${NC}"
+      echo -e "${SUCCESS}API key successfully extracted and saved.${NC}"
     fi
   else
-    echo -e "${SUCCESS}API-Key bereits vorhanden in .apikey${NC}"
+    if [[ "$lang" == "de" ]]; then
+      echo -e "${ERROR}API-Key konnte nicht extrahiert werden.${NC}"
+    else
+      echo -e "${ERROR}API key could not be extracted.${NC}"
+    fi
   fi
+else
+  if [[ "$lang" == "de" ]]; then
+    echo -e "${SUCCESS}API-Key bereits vorhanden in .apikey${NC}"
+  else
+    echo -e "${SUCCESS}API key already present in .apikey${NC}"
+  fi
+fi
 
-  public_ip=$(get_public_ip)
-  if [[ "$public_ip" == "127.0.0.1" ]]; then
+public_ip=$(get_public_ip)
+
+if [[ "$public_ip" == "127.0.0.1" ]]; then
+  if [[ "$lang" == "de" ]]; then
     echo -e "${YELLOW}Warnung: Öffentliche IP konnte nicht ermittelt werden, localhost wird als APP_URL benutzt.${NC}"
+  else
+    echo -e "${YELLOW}Warning: Public IP could not be determined, localhost will be used as APP_URL.${NC}"
   fi
   app_url="http://${public_ip}:${sls_stats_port}"
 
