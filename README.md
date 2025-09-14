@@ -1,2 +1,2 @@
-# stream-relay-installer
+# Stream Relay Installer
 ### WIP
