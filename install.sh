@@ -9,7 +9,7 @@ cat <<"EOF"
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
  |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
-                                                         |___/                                                                                               
+                                                         |___/                                                                                            
            von AlexanderWagnerDev
 EOF
 }
@@ -21,28 +21,51 @@ cat <<"EOF"
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
  |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
-                                                         |___/                                                                                  
+                                                         |___/                                                                                    
            by AlexanderWagnerDev
 EOF
 }
 
 function install_docker_debian_ubuntu() {
-  echo "$1" | grep -qi "ubuntu"; local is_ubuntu=$?
-  echo "$1" | grep -qi "debian"; local is_debian=$?
+  local distro_name
+  local distro_version
+  distro_name=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
+  distro_version=$(lsb_release -rs)
 
   sudo apt-get update
-  sudo apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common
+  sudo apt-get install -y \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg-agent \
+    software-properties-common
 
   curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
 
+  local repo_file="docker.list"
+  local repo_entry="deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg]"
   local codename
   codename=$(lsb_release -cs)
 
-  if [[ $is_debian -eq 0 ]]; then
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $codename stable" | sudo tee /etc/apt/sources.list.d/docker.list
+  if [[ "$distro_name" == "ubuntu" ]]; then
+    if dpkg --compare-versions "$distro_version" ge "24.04"; then
+      repo_file="docker.source"
+      repo_entry="deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $codename stable"
+    else
+      repo_entry="deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $codename stable"
+    fi
+  elif [[ "$distro_name" == "debian" ]]; then
+    if dpkg --compare-versions "$distro_version" ge "13"; then
+      repo_file="docker.source"
+      repo_entry="deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $codename stable"
+    else
+      repo_entry="deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $codename stable"
+    fi
   else
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $codename stable" | sudo tee /etc/apt/sources.list.d/docker.list
+    repo_entry="deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $codename stable"
   fi
+
+  echo "$repo_entry" | sudo tee /etc/apt/sources.list.d/$repo_file
 
   sudo apt-get update
   sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
@@ -52,6 +75,7 @@ function install_docker_debian_ubuntu() {
 
   sudo usermod -aG docker "$USER"
 }
+
 
 function read_port () {
   local prompt="$1"
@@ -209,7 +233,7 @@ if [[ "$install_srtla" =~ ^[JjYy] ]]; then
   docker pull alexanderwagnerdev/srtla-server:latest
   docker rm -f srtla-receiver 2>/dev/null || true
   docker run -d --name srtla-receiver --restart unless-stopped -v srtla-server:/var/lib/sls \
-    -p ${sls_player_port}:5000/udp -p ${sls_publisher_port}:4000/udp -p ${srtla_port}:4001/udp -p ${sls_stats_port}:8080 \
+    -p ${sls_player_port}:4000/udp -p ${sls_publisher_port}:4001/udp -p ${srtla_port}:5000/udp -p ${sls_stats_port}:8080 \
     alexanderwagnerdev/srtla-server:latest
 else
   echo "$srtla_skip_msg"
