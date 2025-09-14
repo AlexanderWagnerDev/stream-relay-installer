@@ -9,7 +9,7 @@ cat <<"EOF"
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
  |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
-                                                         |___/                                                                                            
+                                                         |___/                                                                                           
            von AlexanderWagnerDev
 EOF
 }
@@ -21,7 +21,7 @@ cat <<"EOF"
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
  |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
-                                                         |___/                                                                                    
+                                                         |___/                                                                                   
            by AlexanderWagnerDev
 EOF
 }
@@ -69,13 +69,10 @@ function install_docker_debian_ubuntu() {
 
   sudo apt-get update
   sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
   sudo systemctl enable docker
   sudo systemctl start docker
-
   sudo usermod -aG docker "$USER"
 }
-
 
 function read_port () {
   local prompt="$1"
@@ -92,6 +89,38 @@ function read_port () {
     response=$default_port
   fi
   echo "$response"
+}
+
+function get_public_ip() {
+  local ip=""
+  ip=$(curl -fs4 https://ipinfo.io/ip 2>/dev/null || echo "")
+  if [[ -z "$ip" ]]; then
+    ip=$(curl -fs4 https://api.ipify.org 2>/dev/null || echo "")
+  fi
+  if [[ -z "$ip" ]]; then
+    ip=$(curl -fs4 https://ifconfig.me/ip 2>/dev/null || echo "")
+  fi
+  if [[ -z "$ip" ]]; then
+    ip="127.0.0.1"
+  fi
+  echo "$ip"
+}
+
+function docker_pull_fallback() {
+  local image="$1"
+  local fallback_image="$2"
+
+  if docker pull "$image"; then
+    return 0
+  else
+    echo "Warnung: Image '$image' nicht von Docker Hub gefunden, versuche Fallback GHCR..."
+    if docker pull "$fallback_image"; then
+      return 0
+    else
+      echo "Fehler: Image konnte weder von Docker Hub noch GHCR gezogen werden: $image / $fallback_image"
+      return 1
+    fi
+  fi
 }
 
 echo "Wähle Sprache / Choose language:"
@@ -131,12 +160,13 @@ if [[ "$lang" == "de" ]]; then
   ipv6_skip_msg="Docker IPv6 Unterstützung wird nicht aktiviert."
   restart_msg="Bitte beachten: Nach Docker-Installation ist evtl. ein Neustart oder eine neue Anmeldung nötig, damit Docker-Gruppenrechte aktiv werden."
   port_prompts=(
-    "Port für SLS-Player (Standard: 4000)"
-    "Port für SLS-Publisher (Standard: 4001)"
+    "Port für SRT-Player (Standard: 4000)"
+    "Port für SRT-Sender (Standard: 4001)"
     "Port für SRTLA (Standard: 5000)"
     "Port für SLS Stats (Standard: 8080)"
     "Port für RTMP-Server Stats/Web (Standard: 8090)"
     "Port für RTMP (Standard: 1935)"
+    "Port für SLSMU (Standard: 3000)"
   )
 else
   docker_prompt="Install Docker? (y/n):"
@@ -158,12 +188,13 @@ else
   ipv6_skip_msg="Not enabling Docker IPv6 support."
   restart_msg="Please note: After Docker installation a reboot or re-login might be necessary to activate Docker group permissions."
   port_prompts=(
-    "Port for SLS Player (default: 4000)"
-    "Port for SLS Publisher (default: 4001)"
+    "Port for SRT Player (default: 4000)"
+    "Port for SRT Sender (default: 4001)"
     "Port for SRTLA (default: 5000)"
     "Port for SLS Stats (default: 8080)"
     "Port for RTMP Server Stats/Web (default: 8090)"
     "Port for RTMP (default: 1935)"
+    "Port for SLSMU (default: 3000)"
   )
 fi
 
@@ -190,30 +221,34 @@ else
   echo "$ipv6_skip_msg"
 fi
 
+
 read -rp "$use_default_ports_prompt " use_default_ports
 use_default_ports=${use_default_ports:-y}
 
 if [[ "$use_default_ports" =~ ^[JjYy] ]]; then
-  sls_player_port=4000
-  sls_publisher_port=4001
+  srt_player_port=4000
+  srt_sender_port=4001
   srtla_port=5000
   sls_stats_port=8080
   rtmp_stats_port=8090
   rtmp_port=1935
+  slsmu_port=3000
 else
-  sls_player_port=$(read_port "${port_prompts[0]}" 4000 "$lang")
-  sls_publisher_port=$(read_port "${port_prompts[1]}" 4001 "$lang")
+  srt_player_port=$(read_port "${port_prompts[0]}" 4000 "$lang")
+  srt_sender_port=$(read_port "${port_prompts[1]}" 4001 "$lang")
   srtla_port=$(read_port "${port_prompts[2]}" 5000 "$lang")
   sls_stats_port=$(read_port "${port_prompts[3]}" 8080 "$lang")
   rtmp_stats_port=$(read_port "${port_prompts[4]}" 8090 "$lang")
   rtmp_port=$(read_port "${port_prompts[5]}" 1935 "$lang")
+  slsmu_port=$(read_port "${port_prompts[6]}" 3000 "$lang")
 fi
+
 
 read -rp "$rtmp_prompt " install_rtmp
 install_rtmp=${install_rtmp:-n}
 if [[ "$install_rtmp" =~ ^[JjYy] ]]; then
   echo "$rtmp_install_msg"
-  docker pull alexanderwagnerdev/rtmp-server:latest
+  docker_pull_fallback "alexanderwagnerdev/rtmp-server:latest" "ghcr.io/alexanderwagnerdev/rtmp-server:latest"
   docker rm -f rtmp-server 2>/dev/null || true
   docker run -d --name rtmp-server --restart unless-stopped -p ${rtmp_stats_port}:80 -p ${rtmp_port}:1935 alexanderwagnerdev/rtmp-server:latest
 else
@@ -230,11 +265,28 @@ if [[ "$install_srtla" =~ ^[JjYy] ]]; then
   volume_data_path="/var/lib/docker/volumes/srtla-server/_data"
   sudo chown 3001:3001 "$volume_data_path"
   sudo chmod 755 "$volume_data_path"
-  docker pull alexanderwagnerdev/srtla-server:latest
+  docker_pull_fallback "alexanderwagnerdev/srtla-server:latest" "ghcr.io/alexanderwagnerdev/srtla-server:latest"
   docker rm -f srtla-receiver 2>/dev/null || true
   docker run -d --name srtla-receiver --restart unless-stopped -v srtla-server:/var/lib/sls \
-    -p ${sls_player_port}:4000/udp -p ${sls_publisher_port}:4001/udp -p ${srtla_port}:5000/udp -p ${sls_stats_port}:8080 \
+    -p ${srt_player_port}:4000/udp -p ${srt_sender_port}:4001/udp -p ${srtla_port}:5000/udp -p ${sls_stats_port}:8080 \
     alexanderwagnerdev/srtla-server:latest
+
+  public_ip=$(get_public_ip)
+  if [[ "$public_ip" == "127.0.0.1" ]]; then
+    echo "Warnung: Öffentliche IP konnte nicht ermittelt werden, localhost wird als APP_URL benutzt."
+  fi
+  app_url="http://${public_ip}:${sls_stats_port}"
+
+  docker_pull_fallback "alexanderwagnerdev/slsmu:latest" "ghcr.io/alexanderwagnerdev/slsmu:latest"
+  docker rm -f slsmu 2>/dev/null || true
+  docker run -d --name slsmu --restart unless-stopped \
+    -p ${slsmu_port}:3000 \
+    -e REACT_APP_BASE_URL="${app_url}" \
+    -e REACT_APP_SRT_PLAYER_PORT="${sls_player_port}" \
+    -e REACT_APP_SRT_SENDER_PORT="${sls_publisher_port}" \
+    -e REACT_APP_SLS_STATS_PORT="${sls_stats_port}" \
+    -e REACT_APP_SRTLA_PORT="${srtla_port}" \
+    alexanderwagnerdev/slsmu:latest
 else
   echo "$srtla_skip_msg"
 fi
@@ -243,7 +295,7 @@ read -rp "$watchtower_prompt " install_watchtower
 install_watchtower=${install_watchtower:-n}
 if [[ "$install_watchtower" =~ ^[JjYy] ]]; then
   echo "$watchtower_install_msg"
-  docker pull containrrr/watchtower:latest
+  docker_pull_fallback "containrrr/watchtower:latest" "ghcr.io/containrrr/watchtower:latest"
   docker rm -f watchtower 2>/dev/null || true
   docker run -d --name watchtower --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock containrrr/watchtower:latest --cleanup
 else
