@@ -10,4 +10,12 @@ jobs:
       - name: Run install script
         run: |
           chmod +x ./install.sh
-          ./install.sh
+          ./install.sh <<EOF
+          1
+          1
+          j
+          j
+          j
+          j
+          j
+          EOF
