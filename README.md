@@ -1,4 +1,6 @@
 # Stream Relay Installer
 ### WIP
 
-curl https://stream-relay-installer.awdevtools.com/install.sh | bash
+```bash
+curl -sSL https://stream-relay-installer.awdevtools.com/install.sh | bash
+```
