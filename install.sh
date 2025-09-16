@@ -518,7 +518,6 @@ if [[ "$mainaction" == "1" ]]; then
     alexanderwagnerdev/slsmu:latest
   health_check slsmu
 
-  print_available_services "$app_url" "$slsmu_port"
 
   read -rp "$watchtower_prompt " install_watchtower
   install_watchtower=${install_watchtower:-n}
@@ -531,6 +530,8 @@ if [[ "$mainaction" == "1" ]]; then
   else
     echo -e "$watchtower_skip_msg"
   fi
+
+  print_available_services "$app_url" "$slsmu_port"
 
   echo -e "$done_msg"
   echo -e "$restart_msg"
