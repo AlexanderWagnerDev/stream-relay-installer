@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set +e
+set -e
 
 RED="\033[0;31m"
 GREEN="\033[0;32m"
@@ -168,22 +168,22 @@ function print_available_services() {
     echo -e "${HEADER}Verfügbare Dienste:${NC}"
     echo -e "${SUCCESS}Management UI: http://${public_ip}:${management_port}${NC}"
     echo -e "${SUCCESS}Backend API: ${app_url}${NC}"
-    echo -e "${SUCCESS}SRTla Port: ${srtla_port}/udp${NC}"
-    echo -e "${SUCCESS}SRT Sender Port: ${srt_sender_port}/udp${NC}"
-    echo -e "${SUCCESS}SRT Player Port: ${srt_player_port}/udp${NC}"
-    echo -e "${SUCCESS}Statistics Port: ${sls_stats_port}/tcp${NC}"
-    echo -e "${SUCCESS}RTMP Stats/Web Port: ${rtmp_stats_port}/tcp${NC}"
-    echo -e "${SUCCESS}RTMP Port: ${rtmp_port}/tcp${NC}"
+    echo -e "${SUCCESS}SRTLA Sender URL (Example): srtla://${public_ip}:${srtla_port}${NC}"
+    echo -e "${SUCCESS}SRT Sender URL (Example): srt://${public_ip}:${srt_sender_port}/livekey${NC}"
+    echo -e "${SUCCESS}SRT Player URL FOR OBS (Example): srt://${public_ip}:${srt_player_port}/playkey${NC}"
+    echo -e "${SUCCESS}Statistics URL (Example): http://${public_ip}:${sls_stats_port}/stats/livekey${NC}"
+    echo -e "${SUCCESS}RTMP Stats URL: http://${public_ip}:${rtmp_stats_port}/stats${NC}"
+    echo -e "${SUCCESS}RTMP URL: rtmp://${public_ip}:${rtmp_port}/publish/livekey${NC}"
   else
     echo -e "${HEADER}Available services:${NC}"
     echo -e "${SUCCESS}Management UI: http://${public_ip}:${management_port}${NC}"
     echo -e "${SUCCESS}Backend API: ${app_url}${NC}"
-    echo -e "${SUCCESS}SRTla Port: ${srtla_port}/udp${NC}"
-    echo -e "${SUCCESS}SRT Sender Port: ${srt_sender_port}/udp${NC}"
-    echo -e "${SUCCESS}SRT Player Port: ${srt_player_port}/udp${NC}"
-    echo -e "${SUCCESS}Statistics Port: ${sls_stats_port}/tcp${NC}"
-    echo -e "${SUCCESS}RTMP Stats/Web Port: ${rtmp_stats_port}/tcp${NC}"
-    echo -e "${SUCCESS}RTMP Port: ${rtmp_port}/tcp${NC}"
+    echo -e "${SUCCESS}SRTLA Sender URL (Example): srtla://${public_ip}:${srtla_port}${NC}"
+    echo -e "${SUCCESS}SRT Sender URL (Example): srt://${public_ip}:${srt_sender_port}/livekey${NC}"
+    echo -e "${SUCCESS}SRT Player URL FOR OBS (Example): srt://${public_ip}:${srt_player_port}/playkey${NC}"
+    echo -e "${SUCCESS}Statistics URL (Example): http://${public_ip}:${sls_stats_port}/stats/livekey${NC}"
+    echo -e "${SUCCESS}RTMP Stats URL: http://${public_ip}:${rtmp_stats_port}/stats${NC}"
+    echo -e "${SUCCESS}RTMP URL: rtmp://${public_ip}:${rtmp_port}/publish/livekey${NC}"
   fi
 }
 
@@ -215,11 +215,13 @@ function health_check() {
   running=$(docker inspect -f '{{.State.Running}}' "$cname" 2>/dev/null || echo "false")
   if [[ "$running" == "true" ]]; then
     local health
-    health=$(docker inspect --format='{{.State.Health.Status}}' "$cname" 2>/dev/null)
+    health=$(docker inspect --format='{{.State.Health.Status}}' "$cname" 2>/dev/null || echo "")
     if [[ "$health" == "healthy" ]]; then
       [[ "$lang" == "de" ]] && echo -e "${SUCCESS}Container $cname ist gesund.${NC}" || echo -e "${SUCCESS}Container $cname is healthy.${NC}"
+    elif [[ -z "$health" ]]; then
+      [[ "$lang" == "de" ]] && echo -e "${SUCCESS}Container $cname läuft (kein Healthcheck definiert).${NC}" || echo -e "${SUCCESS}Container $cname is running (no healthcheck defined).${NC}"
     else
-      [[ "$lang" == "de" ]] && echo -e "${INFO}Container $cname läuft. (Kein Healthcheck definiert)${NC}" || echo -e "${INFO}Container $cname is running. (No healthcheck defined)${NC}"
+      [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname ist nicht gesund! Status: $health${NC}" || echo -e "${ERROR}Container $cname is not healthy! Status: $health${NC}"
     fi
   else
     [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname läuft NICHT!${NC}" || echo -e "${ERROR}Container $cname is NOT running!${NC}"
