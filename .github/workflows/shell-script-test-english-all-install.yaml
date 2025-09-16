@@ -1,0 +1,23 @@
+name: Test Installer Script in English with install all
+on: 
+  workflow_dispatch:
+  
+jobs:
+  test-shell-script:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Run install script in English with install all
+        run: |
+          chmod +x ./install.sh
+          ./install.sh <<EOF
+          2
+          1
+          y
+          y
+          y
+          y
+          y
+          y
+          y
+          EOF
