@@ -168,10 +168,10 @@ function print_available_services() {
     echo -e "${HEADER}Verfügbare Dienste:${NC}"
     echo -e "${SUCCESS}Management UI: http://${public_ip}:${management_port}${NC}"
     echo -e "${SUCCESS}Backend API: ${app_url}${NC}"
-    echo -e "${SUCCESS}SRTLA Sender URL (Example): srtla://${public_ip}:${srtla_port}${NC}"
-    echo -e "${SUCCESS}SRT Sender URL (Example): srt://${public_ip}:${srt_sender_port}/livekey${NC}"
-    echo -e "${SUCCESS}SRT Player URL FOR OBS (Example): srt://${public_ip}:${srt_player_port}/playkey${NC}"
-    echo -e "${SUCCESS}Statistics URL (Example): http://${public_ip}:${sls_stats_port}/stats/livekey${NC}"
+    echo -e "${SUCCESS}SRTLA Sender URL (Beispiel): srtla://${public_ip}:${srtla_port}${NC}"
+    echo -e "${SUCCESS}SRT Sender URL (Beispiel): srt://${public_ip}:${srt_sender_port}/livekey${NC}"
+    echo -e "${SUCCESS}SRT Player URL FÜR OBS (Beispiel): srt://${public_ip}:${srt_player_port}/playkey${NC}"
+    echo -e "${SUCCESS}Statistics URL (Beispiel): http://${public_ip}:${sls_stats_port}/stats/livekey${NC}"
     echo -e "${SUCCESS}RTMP Stats URL: http://${public_ip}:${rtmp_stats_port}/stats${NC}"
     echo -e "${SUCCESS}RTMP URL: rtmp://${public_ip}:${rtmp_port}/publish/livekey${NC}"
   else
@@ -526,7 +526,6 @@ if [[ "$mainaction" == "1" ]]; then
     docker_pull_fallback "containrrr/watchtower:latest" "ghcr.io/containrrr/watchtower:latest"
     docker rm -f watchtower 2>/dev/null || true
     docker run -d --name watchtower --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock containrrr/watchtower:latest --cleanup
-    health_check watchtower
   else
     echo -e "$watchtower_skip_msg"
   fi
