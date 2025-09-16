@@ -57,7 +57,7 @@ function install_docker_debian_ubuntu() {
   codename=$(lsb_release -cs)
   
   if [[ "$distro_name" == "ubuntu" ]]; then
-    if dpkg --compare-versions "$distro_version" ge "24.04"; then
+    if dpkg --compare-versions "$distro_version" ge "24.10"; then
       repo_file="docker.source"
       repo_entry="deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $codename stable"
     else
