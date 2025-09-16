@@ -51,7 +51,7 @@ function install_docker_debian_ubuntu() {
   curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
   
   local repo_file="docker.list"
-  local repo_entry="deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg]"
+  local repo_entry="deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg]"
   
   local codename
   codename=$(lsb_release -cs)
