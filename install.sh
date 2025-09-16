@@ -433,6 +433,7 @@ if [[ "$install_rtmp" =~ ^[JjYy] ]]; then
   docker_pull_fallback "alexanderwagnerdev/rtmp-server:latest" "ghcr.io/alexanderwagnerdev/rtmp-server:latest"
   docker rm -f rtmp-server 2>/dev/null || true
   docker run -d --name rtmp-server --restart unless-stopped -p ${rtmp_stats_port}:80 -p ${rtmp_port}:1935 alexanderwagnerdev/rtmp-server:latest
+  health_check rtmp-server
 else
   echo -e "$rtmp_skip_msg"
 fi
@@ -452,6 +453,7 @@ if [[ "$install_srtla" =~ ^[JjYy] ]]; then
   docker run -d --name srtla-server --restart unless-stopped -v srtla-server:/var/lib/sls \
     -p ${srt_player_port}:4000/udp -p ${srt_sender_port}:4001/udp -p ${srtla_port}:5000/udp -p ${sls_stats_port}:8080 \
     alexanderwagnerdev/srtla-server:latest
+  health_check srtla-server
 
   if [ ! -f ".apikey" ]; then
     if [[ "$lang" == "de" ]]; then
@@ -508,6 +510,7 @@ if [[ "$install_srtla" =~ ^[JjYy] ]]; then
     -e REACT_APP_SLS_STATS_PORT="${sls_stats_port}" \
     -e REACT_APP_SRTLA_PORT="${srtla_port}" \
     alexanderwagnerdev/slsmu:latest
+  health_check slsmu
 
   print_available_services "$app_url" "$slsmu_port"
 else
@@ -521,6 +524,7 @@ if [[ "$install_watchtower" =~ ^[JjYy] ]]; then
   docker_pull_fallback "containrrr/watchtower:latest" "ghcr.io/containrrr/watchtower:latest"
   docker rm -f watchtower 2>/dev/null || true
   docker run -d --name watchtower --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock containrrr/watchtower:latest --cleanup
+  health_check watchtower
 else
   echo -e "$watchtower_skip_msg"
 fi
