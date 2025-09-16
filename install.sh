@@ -36,11 +36,12 @@ EOF
 }
 
 function system_update_prompt() {
+  export DEBIAN_FRONTEND=noninteractive
   if [[ "$lang" == "de" ]]; then
     read -rp $'\033[1;33mSoll das System jetzt aktualisiert werden? (j/n):\033[0m ' sys_update
     if [[ "$sys_update" =~ ^[JjYy] ]]; then
       echo -e "${INFO}System wird aktualisiert...${NC}"
-      sudo apt-get update && sudo apt-get upgrade -y
+      sudo apt-get update && sudo apt-get dist-upgrade -y
       echo -e "${SUCCESS}Systemaktualisierung abgeschlossen.${NC}"
     else
       echo -e "${INFO}Systemaktualisierung übersprungen.${NC}"
@@ -49,7 +50,7 @@ function system_update_prompt() {
     read -rp $'\033[1;33mDo you want to update the system now? (y/n):\033[0m ' sys_update
     if [[ "$sys_update" =~ ^[Yy] ]]; then
       echo -e "${INFO}Updating system...${NC}"
-      sudo apt-get update && sudo apt-get upgrade -y
+      sudo apt-get update && sudo apt-get dist-upgrade -y
       echo -e "${SUCCESS}System update complete.${NC}"
     else
       echo -e "${INFO}System update skipped.${NC}"
