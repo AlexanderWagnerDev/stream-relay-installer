@@ -6,7 +6,7 @@ jobs:
   test-shell-script:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v5
       - name: Run install script
         run: |
           chmod +x ./install.sh
