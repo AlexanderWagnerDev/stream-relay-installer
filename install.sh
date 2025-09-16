@@ -256,7 +256,7 @@ function uninstall_services() {
     docker rmi -f "ghcr.io/${img}" 2>/dev/null
   done
   if [[ "$lang" == "de" ]]; then
-    read -rp "${YELLOW}Sollen auch Volumes gelöscht werden? (j/n):${NC} " rmvol
+    read -rp $'\033[1;33mSollen auch Volumes gelöscht werden? (j/n):\033[0m ' rmvol
     if [[ "$rmvol" =~ ^[Jj] ]]; then
       docker volume rm srtla-server 2>/dev/null
       echo -e "${SUCCESS}Docker-Volume srtla-server entfernt.${NC}"
@@ -265,7 +265,7 @@ function uninstall_services() {
     fi
     echo -e "${SUCCESS}Alle Container und Images entfernt.${NC}"
   else
-    read -rp "${YELLOW}Should volumes be deleted as well? (y/n):${NC} " rmvol
+    read -rp $'\033[1;33mShould volumes be deleted as well? (y/n):\033[0m ' rmvol
     if [[ "$rmvol" =~ ^[Yy] ]]; then
       docker volume rm srtla-server 2>/dev/null
       echo -e "${SUCCESS}Docker volume srtla-server removed.${NC}"
@@ -517,7 +517,6 @@ if [[ "$mainaction" == "1" ]]; then
     -e REACT_APP_SRTLA_PORT="${srtla_port}" \
     alexanderwagnerdev/slsmu:latest
   health_check slsmu
-
 
   read -rp "$watchtower_prompt " install_watchtower
   install_watchtower=${install_watchtower:-n}
