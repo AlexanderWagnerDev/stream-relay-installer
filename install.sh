@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set +e
 
 RED="\033[0;31m"
 GREEN="\033[0;32m"
@@ -293,7 +293,7 @@ fi
 if [[ "$lang" == "de" ]]; then
   docker_prompt="Docker installieren? (j/n):"
   rtmp_prompt="RTMP-Server Docker Container installieren und starten? (j/n):"
-  srtla_prompt="SRTLA-Receiver Docker Container installieren und starten? (j/n):"
+  srtla_prompt="SRTLA-Server Docker Container installieren und starten? (j/n):"
   watchtower_prompt="Watchtower Container (automatische Updates) installieren und starten? (j/n):"
   ipv6_prompt="Docker IPv6 Unterstützung aktivieren? (j/n):"
   use_default_ports_prompt="Standardports verwenden? (j/n):"
@@ -302,8 +302,8 @@ if [[ "$lang" == "de" ]]; then
   docker_skip_msg="Docker wird nicht installiert."
   rtmp_install_msg="Starte RTMP-Server Docker-Container..."
   rtmp_skip_msg="RTMP-Server wird nicht installiert."
-  srtla_install_msg="Starte SRTLA-Receiver Docker-Container..."
-  srtla_skip_msg="SRTLA-Receiver wird nicht installiert."
+  srtla_install_msg="Starte SRTLA-Server Docker-Container..."
+  srtla_skip_msg="SRTLA-Server wird nicht installiert."
   watchtower_install_msg="Starte Watchtower Docker-Container..."
   watchtower_skip_msg="Watchtower wird nicht installiert."
   ipv6_enable_msg="Docker IPv6 Unterstützung wird aktiviert..."
@@ -321,7 +321,7 @@ if [[ "$lang" == "de" ]]; then
 else
   docker_prompt="Install Docker? (y/n):"
   rtmp_prompt="Install and start RTMP Server Docker container? (y/n):"
-  srtla_prompt="Install and start SRTLA Receiver Docker container? (y/n):"
+  srtla_prompt="Install and start SRTLA Server Docker container? (y/n):"
   watchtower_prompt="Install and start Watchtower container (automatic updates)? (y/n):"
   ipv6_prompt="Enable Docker IPv6 support? (y/n):"
   use_default_ports_prompt="Use default ports? (y/n):"
@@ -330,8 +330,8 @@ else
   docker_skip_msg="Skipping Docker installation."
   rtmp_install_msg="Starting RTMP Server Docker container..."
   rtmp_skip_msg="Skipping RTMP Server installation."
-  srtla_install_msg="Starting SRTLA Receiver Docker container..."
-  srtla_skip_msg="Skipping SRTLA Receiver installation."
+  srtla_install_msg="Starting SRTLA Server Docker container..."
+  srtla_skip_msg="Skipping SRTLA Server installation."
   watchtower_install_msg="Starting Watchtower Docker container..."
   watchtower_skip_msg="Skipping Watchtower installation."
   ipv6_enable_msg="Enabling Docker IPv6 support..."
@@ -347,7 +347,6 @@ else
     "Port for SLSMU (default: 3000)"
   )
 fi
-
 
 if [[ "$lang" == "de" ]]; then
   echo -e "${YELLOW}Was möchtest du tun?${NC}"
@@ -434,7 +433,7 @@ if [[ "$mainaction" == "1" ]]; then
     echo -e "$rtmp_install_msg"
     docker_pull_fallback "alexanderwagnerdev/rtmp-server:latest" "ghcr.io/alexanderwagnerdev/rtmp-server:latest"
     docker rm -f rtmp-server 2>/dev/null || true
-    docker run -d --name rtmp-server --restart unless-stopped -p "${rtmp_stats_port}":80 -p "${rtmp_port}":1935 alexanderwagnerdev/rtmp-server:latest
+    docker run -d --name rtmp-server --restart unless-stopped -p "${rtmp_stats_port}":80/tcp -p "${rtmp_port}":1935/tcp alexanderwagnerdev/rtmp-server:latest
     health_check rtmp-server
   else
     echo -e "$rtmp_skip_msg"
@@ -453,7 +452,7 @@ if [[ "$mainaction" == "1" ]]; then
     docker_pull_fallback "alexanderwagnerdev/srtla-server:latest" "ghcr.io/alexanderwagnerdev/srtla-server:latest"
     docker rm -f srtla-server 2>/dev/null || true
     docker run -d --name srtla-server --restart unless-stopped -v srtla-server:/var/lib/sls \
-      -p "${srt_player_port}":4000/udp -p "${srt_sender_port}":4001/udp -p "${srtla_port}":5000/udp -p "${sls_stats_port}":8080 \
+      -p "${srt_player_port}":4000/udp -p "${srt_sender_port}":4001/udp -p "${srtla_port}":5000/udp -p "${sls_stats_port}":8080/tcp \
       alexanderwagnerdev/srtla-server:latest
     health_check srtla-server
 
@@ -508,7 +507,7 @@ if [[ "$mainaction" == "1" ]]; then
   docker_pull_fallback "alexanderwagnerdev/slsmu:latest" "ghcr.io/alexanderwagnerdev/slsmu:latest"
   docker rm -f slsmu 2>/dev/null || true
   docker run -d --name slsmu --restart unless-stopped \
-    -p "${slsmu_port}":3000 \
+    -p "${slsmu_port}":3000/tcp \
     -e REACT_APP_BASE_URL="${app_url}" \
     -e REACT_APP_SRT_PLAYER_PORT="${srt_player_port}" \
     -e REACT_APP_SRT_SENDER_PORT="${srt_sender_port}" \
