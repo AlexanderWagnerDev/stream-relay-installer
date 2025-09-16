@@ -305,7 +305,7 @@ elif [[ "$mainaction" == "4" ]]; then
 fi
 
 if [[ "$lang" == "de" ]]; then
-  read -rp "${YELLOW}Soll das System jetzt aktualisiert werden? (j/n):${NC} " sys_update
+  read -rp $'\033[1;33mSoll das System jetzt aktualisiert werden? (j/n):\033[0m ' sys_update
   if [[ "$sys_update" =~ ^[JjYy] ]]; then
     echo -e "${INFO}System wird aktualisiert...${NC}"
     sudo apt-get update && sudo apt-get upgrade -y
@@ -314,7 +314,7 @@ if [[ "$lang" == "de" ]]; then
     echo -e "${INFO}Systemaktualisierung übersprungen.${NC}"
   fi
 else
-  read -rp "${YELLOW}Do you want to update the system now? (y/n):${NC} " sys_update
+  read -rp $'\033[1;33mDo you want to update the system now? (y/n):\033[0m ' sys_update
   if [[ "$sys_update" =~ ^[Yy] ]]; then
     echo -e "${INFO}Updating system...${NC}"
     sudo apt-get update && sudo apt-get upgrade -y
