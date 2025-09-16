@@ -189,7 +189,6 @@ function print_available_services() {
   [uninstall]   Remove containers/images/optional volumes
   [help]        Show this help"
   fi
-}
 
 function health_check() {
   local cname="$1"
