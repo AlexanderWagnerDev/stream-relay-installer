@@ -170,12 +170,97 @@ function print_available_services() {
   fi
 }
 
+  if [[ "$lang" == "de" ]]; then
+    echo -e "${HEADER}Hilfe:${NC}
+  Mit diesem Script kannst du die Installation, das Starten, Stoppen oder das Entfernen der Stream-Services ausführen.
+  ${GREEN}Funktionen:${NC}
+  [installieren] Installation durchführen
+  [starten]     Container starten
+  [stoppen]     Container stoppen
+  [deinstallieren] Container/Images/optional Volumes entfernen
+  [hilfe]       Diese Hilfe anzeigen"
+  else
+    echo -e "${HEADER}Help:${NC}
+  This script lets you install, start, stop or uninstall the stream services interactively.
+  ${GREEN}Functions:${NC}
+  [install]     Run installation
+  [start]       Start containers
+  [stop]        Stop containers
+  [uninstall]   Remove containers/images/optional volumes
+  [help]        Show this help"
+  fi
+}
+
+function health_check() {
+  local cname="$1"
+  local running
+  running=$(docker inspect -f '{{.State.Running}}' "$cname" 2>/dev/null || echo "false")
+  if [[ "$running" == "true" ]]; then
+    local health
+    health=$(docker inspect --format='{{.State.Health.Status}}' "$cname" 2>/dev/null)
+    if [[ "$health" == "healthy" ]]; then
+      [[ "$lang" == "de" ]] && echo -e "${SUCCESS}Container $cname ist gesund.${NC}" || echo -e "${SUCCESS}Container $cname is healthy.${NC}"
+    else
+      [[ "$lang" == "de" ]] && echo -e "${INFO}Container $cname läuft. (Kein Healthcheck definiert)${NC}" || echo -e "${INFO}Container $cname is running. (No healthcheck defined)${NC}"
+    fi
+  else
+    [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname läuft NICHT!${NC}" || echo -e "${ERROR}Container $cname is NOT running!${NC}"
+  fi
+}
+
+function stop_services() {
+  for cname in rtmp-server srtla-server slsmu watchtower; do
+    if docker ps --format '{{.Names}}' | grep -q "^$cname$"; then
+      docker stop "$cname"
+      [[ "$lang" == "de" ]] && echo -e "${INFO}Container $cname gestoppt.${NC}" || echo -e "${INFO}Stopped container $cname.${NC}"
+    fi
+  done
+}
+
+function start_services() {
+  for cname in rtmp-server srtla-server slsmu watchtower; do
+    docker start "$cname" 2>/dev/null
+    health_check "$cname"
+  done
+}
+
+function uninstall_services() {
+  for cname in rtmp-server srtla-server slsmu watchtower; do
+    if docker ps -a --format '{{.Names}}' | grep -q "^$cname$"; then
+      docker rm -f "$cname"
+      [[ "$lang" == "de" ]] && echo -e "${INFO}Container $cname entfernt.${NC}" || echo -e "${INFO}Removed container $cname.${NC}"
+    fi
+  done
+  for img in alexanderwagnerdev/rtmp-server alexanderwagnerdev/srtla-server alexanderwagnerdev/slsmu containrrr/watchtower; do
+    docker rmi -f "$img" 2>/dev/null
+    docker rmi -f "ghcr.io/${img}" 2>/dev/null
+  done
+  if [[ "$lang" == "de" ]]; then
+    read -rp "${YELLOW}Sollen auch Volumes gelöscht werden? (j/n):${NC} " rmvol
+    if [[ "$rmvol" =~ ^[Jj] ]]; then
+      docker volume rm srtla-server 2>/dev/null
+      echo -e "${SUCCESS}Docker-Volume srtla-server entfernt.${NC}"
+    else
+      echo -e "${INFO}Volumes bleiben erhalten.${NC}"
+    fi
+    echo -e "${SUCCESS}Alle Container und Images entfernt.${NC}"
+  else
+    read -rp "${YELLOW}Should volumes be deleted as well? (y/n):${NC} " rmvol
+    if [[ "$rmvol" =~ ^[Yy] ]]; then
+      docker volume rm srtla-server 2>/dev/null
+      echo -e "${SUCCESS}Docker volume srtla-server removed.${NC}"
+    else
+      echo -e "${INFO}Volumes are kept.${NC}"
+    fi
+    echo -e "${SUCCESS}All containers and images removed.${NC}"
+  fi
+}
+
 echo "Wähle Sprache / Choose language:"
 echo "[1] Deutsch"
 echo "[2] English"
 read -rp "Auswahl / Choice [1]: " lang_choice
 lang_choice=${lang_choice:-1}
-
 if [[ "$lang_choice" == "1" ]]; then
   lang="de"
   print_ascii_art_de
@@ -185,6 +270,59 @@ elif [[ "$lang_choice" == "2" ]]; then
 else
   lang="de"
   print_ascii_art_de
+fi
+
+if [[ "$lang" == "de" ]]; then
+  echo -e "${YELLOW}Was möchtest du tun?${NC}"
+  echo " [1] Installieren"
+  echo " [2] Starten"
+  echo " [3] Stoppen"
+  echo " [4] Deinstallieren"
+  echo " [5] Hilfe"
+  read -rp "Auswahl [1]: " mainaction
+else
+  echo -e "${YELLOW}What do you want to do?${NC}"
+  echo " [1] Install"
+  echo " [2] Start"
+  echo " [3] Stop"
+  echo " [4] Uninstall"
+  echo " [5] Help"
+  read -rp "Choice [1]: " mainaction
+fi
+mainaction=${mainaction:-1}
+
+if [[ "$mainaction" == "5" ]]; then
+  print_help
+  exit 0
+elif [[ "$mainaction" == "2" ]]; then
+  start_services
+  exit 0
+elif [[ "$mainaction" == "3" ]]; then
+  stop_services
+  exit 0
+elif [[ "$mainaction" == "4" ]]; then
+  uninstall_services
+  exit 0
+fi
+
+if [[ "$lang" == "de" ]]; then
+  read -rp "${YELLOW}Soll das System jetzt aktualisiert werden? (j/n):${NC} " sys_update
+  if [[ "$sys_update" =~ ^[JjYy] ]]; then
+    echo -e "${INFO}System wird aktualisiert...${NC}"
+    sudo apt-get update && sudo apt-get upgrade -y
+    echo -e "${SUCCESS}Systemaktualisierung abgeschlossen.${NC}"
+  else
+    echo -e "${INFO}Systemaktualisierung übersprungen.${NC}"
+  fi
+else
+  read -rp "${YELLOW}Do you want to update the system now? (y/n):${NC} " sys_update
+  if [[ "$sys_update" =~ ^[Yy] ]]; then
+    echo -e "${INFO}Updating system...${NC}"
+    sudo apt-get update && sudo apt-get upgrade -y
+    echo -e "${SUCCESS}System update complete.${NC}"
+  else
+    echo -e "${INFO}System update skipped.${NC}"
+  fi
 fi
 
 if [[ "$lang" == "de" ]]; then
