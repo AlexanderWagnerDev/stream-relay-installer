@@ -79,14 +79,15 @@ function install_docker_debian_ubuntu() {
     curl \
     gnupg-agent \
     software-properties-common
-  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
   local repo_file="docker.list"
   local codename
   codename=$(lsb_release -cs)
   local repo_entry=""
   if [[ "$distro_name" == "ubuntu" ]]; then
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
     repo_entry="deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $codename stable"
   elif [[ "$distro_name" == "debian" ]]; then
+    curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
     repo_entry="deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $codename stable"
   else
     repo_entry="deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $codename stable"
@@ -168,22 +169,22 @@ function print_available_services() {
     echo -e "${HEADER}Verfügbare Dienste:${NC}"
     echo -e "${SUCCESS}Management UI: http://${public_ip}:${management_port}${NC}"
     echo -e "${SUCCESS}Backend API: ${app_url}${NC}"
-    echo -e "${SUCCESS}SRTLA Sender URL (Beispiel): srtla://${public_ip}:${srtla_port}${NC}"
-    echo -e "${SUCCESS}SRT Sender URL (Beispiel): srt://${public_ip}:${srt_sender_port}/livekey${NC}"
-    echo -e "${SUCCESS}SRT Player URL FÜR OBS (Beispiel): srt://${public_ip}:${srt_player_port}/playkey${NC}"
-    echo -e "${SUCCESS}Statistics URL (Beispiel): http://${public_ip}:${sls_stats_port}/stats/livekey${NC}"
-    echo -e "${SUCCESS}RTMP Stats URL: http://${public_ip}:${rtmp_stats_port}/stats${NC}"
-    echo -e "${SUCCESS}RTMP URL: rtmp://${public_ip}:${rtmp_port}/publish/livekey${NC}"
+    echo -e "${SUCCESS}SRTLA Sender URL ZUM SENDEN (Beispiel): srtla://${public_ip}:${srtla_port}${NC}"
+    echo -e "${SUCCESS}SRT Sender URL ZUM SENDEN (Beispiel): srt://${public_ip}:${srt_sender_port}/livekey${NC}"
+    echo -e "${SUCCESS}SRT Player URL ZUM EMPFANGEN (Beispiel): srt://${public_ip}:${srt_player_port}/playkey${NC}"
+    echo -e "${SUCCESS}SRT/SRTLA Statistiken URL (Beispiel): http://${public_ip}:${sls_stats_port}/stats/livekey${NC}"
+    echo -e "${SUCCESS}RTMP Statistiken URL: http://${public_ip}:${rtmp_stats_port}/stats${NC}"
+    echo -e "${SUCCESS}RTMP URL ZUM SENDEN UND EMPFANGEN (Example): rtmp://${public_ip}:${rtmp_port}/publish/livekey${NC}"
   else
     echo -e "${HEADER}Available services:${NC}"
     echo -e "${SUCCESS}Management UI: http://${public_ip}:${management_port}${NC}"
     echo -e "${SUCCESS}Backend API: ${app_url}${NC}"
-    echo -e "${SUCCESS}SRTLA Sender URL (Example): srtla://${public_ip}:${srtla_port}${NC}"
-    echo -e "${SUCCESS}SRT Sender URL (Example): srt://${public_ip}:${srt_sender_port}/livekey${NC}"
-    echo -e "${SUCCESS}SRT Player URL FOR OBS (Example): srt://${public_ip}:${srt_player_port}/playkey${NC}"
-    echo -e "${SUCCESS}Statistics URL (Example): http://${public_ip}:${sls_stats_port}/stats/livekey${NC}"
+    echo -e "${SUCCESS}SRTLA Sender URL TO SEND (Example): srtla://${public_ip}:${srtla_port}${NC}"
+    echo -e "${SUCCESS}SRT Sender URL TO SEND (Example): srt://${public_ip}:${srt_sender_port}/livekey${NC}"
+    echo -e "${SUCCESS}SRT Player URL TO RECEIVE (Example): srt://${public_ip}:${srt_player_port}/playkey${NC}"
+    echo -e "${SUCCESS}SRT/SRTLA Statistics URL (Example): http://${public_ip}:${sls_stats_port}/stats/livekey${NC}"
     echo -e "${SUCCESS}RTMP Stats URL: http://${public_ip}:${rtmp_stats_port}/stats${NC}"
-    echo -e "${SUCCESS}RTMP URL: rtmp://${public_ip}:${rtmp_port}/publish/livekey${NC}"
+    echo -e "${SUCCESS}RTMP URL FOR SENDING AND RECEIVING (Example): rtmp://${public_ip}:${rtmp_port}/publish/livekey${NC}"
   fi
 }
 
@@ -192,11 +193,11 @@ function print_help() {
     echo -e "${HEADER}Hilfe:${NC}
   Mit diesem Script kannst du die Installation, das Starten, Stoppen oder das Entfernen der Stream-Services ausführen.
   ${GREEN}Funktionen:${NC}
-  [installieren] Installation durchführen
-  [starten]     Container starten
-  [stoppen]     Container stoppen
-  [deinstallieren] Container/Images/optional Volumes entfernen
-  [hilfe]       Diese Hilfe anzeigen"
+  [installieren]    Installation durchführen
+  [starten]         Container starten
+  [stoppen]         Container stoppen
+  [deinstallieren]  Container/Images/optional Volumes entfernen
+  [hilfe]           Diese Hilfe anzeigen"
   else
     echo -e "${HEADER}Help:${NC}
   This script lets you install, start, stop or uninstall the stream services interactively.
