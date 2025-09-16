@@ -1,0 +1,13 @@
+name: Test Installer Script
+on: 
+  workflow_dispatch:
+  
+jobs:
+  test-shell-script:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run install script
+        run: |
+          chmod +x ./install.sh
+          ./install.sh
