@@ -1,4 +1,4 @@
-name: Test Installer Script in German with install all
+name: Test Installer Script in German with install all on amd64
 on: 
   workflow_dispatch:
   
@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Run install script in German with install all
+      - name: Run install script in German with install all on amd64
         run: |
           chmod +x ./install.sh
           ./install.sh <<EOF
