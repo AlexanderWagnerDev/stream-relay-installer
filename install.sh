@@ -1,4 +1,5 @@
 #!/bin/bash
+
 set -e
 
 RED="\033[0;31m"
@@ -37,21 +38,29 @@ EOF
 
 function system_update_prompt() {
   export DEBIAN_FRONTEND=noninteractive
+  export APT_LISTCHANGES_FRONTEND=none
+  export LC_ALL=C
   if [[ "$lang" == "de" ]]; then
-    read -rp $'\033[1;33mSoll das System jetzt aktualisiert werden? (j/n):\033[0m ' sys_update
+    read -rp $'\033[1;33mSoll das System jetzt aktualisiert werden? (j/n): \033[0m' sys_update
     if [[ "$sys_update" =~ ^[JjYy] ]]; then
       echo -e "${INFO}System wird aktualisiert...${NC}"
-      sudo apt-get update && sudo apt-get dist-upgrade -y
+      sudo apt-get update
+      sudo apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade
       echo -e "${SUCCESS}Systemaktualisierung abgeschlossen.${NC}"
+      echo -e "${YELLOW}Ein Neustart wird empfohlen, um Kernel-Updates zu aktivieren.${NC}"
+      sleep 3
     else
       echo -e "${INFO}Systemaktualisierung übersprungen.${NC}"
     fi
   else
-    read -rp $'\033[1;33mDo you want to update the system now? (y/n):\033[0m ' sys_update
+    read -rp $'\033[1;33mDo you want to update the system now? (y/n): \033[0m' sys_update
     if [[ "$sys_update" =~ ^[Yy] ]]; then
       echo -e "${INFO}Updating system...${NC}"
-      sudo apt-get update && sudo apt-get dist-upgrade -y
+      sudo apt-get update
+      sudo apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade
       echo -e "${SUCCESS}System update complete.${NC}"
+      echo -e "${YELLOW}A system reboot is recommended to activate kernel updates.${NC}"
+      sleep 3
     else
       echo -e "${INFO}System update skipped.${NC}"
     fi
@@ -70,15 +79,11 @@ function install_docker_debian_ubuntu() {
     curl \
     gnupg-agent \
     software-properties-common
-    
   curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-  
   local repo_file="docker.list"
-  local repo_entry="deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg]"
-  
   local codename
   codename=$(lsb_release -cs)
-  
+  local repo_entry=""
   if [[ "$distro_name" == "ubuntu" ]]; then
     repo_entry="deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $codename stable"
   elif [[ "$distro_name" == "debian" ]]; then
@@ -86,7 +91,6 @@ function install_docker_debian_ubuntu() {
   else
     repo_entry="deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $codename stable"
   fi
-
   echo "$repo_entry" | sudo tee /etc/apt/sources.list.d/$repo_file
   sudo apt-get update
   sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
@@ -287,6 +291,65 @@ else
 fi
 
 if [[ "$lang" == "de" ]]; then
+  docker_prompt="Docker installieren? (j/n):"
+  rtmp_prompt="RTMP-Server Docker Container installieren und starten? (j/n):"
+  srtla_prompt="SRTLA-Receiver Docker Container installieren und starten? (j/n):"
+  watchtower_prompt="Watchtower Container (automatische Updates) installieren und starten? (j/n):"
+  ipv6_prompt="Docker IPv6 Unterstützung aktivieren? (j/n):"
+  use_default_ports_prompt="Standardports verwenden? (j/n):"
+  done_msg="Setup abgeschlossen."
+  docker_install_msg="Docker Installation wird gestartet..."
+  docker_skip_msg="Docker wird nicht installiert."
+  rtmp_install_msg="Starte RTMP-Server Docker-Container..."
+  rtmp_skip_msg="RTMP-Server wird nicht installiert."
+  srtla_install_msg="Starte SRTLA-Receiver Docker-Container..."
+  srtla_skip_msg="SRTLA-Receiver wird nicht installiert."
+  watchtower_install_msg="Starte Watchtower Docker-Container..."
+  watchtower_skip_msg="Watchtower wird nicht installiert."
+  ipv6_enable_msg="Docker IPv6 Unterstützung wird aktiviert..."
+  ipv6_skip_msg="Docker IPv6 Unterstützung wird nicht aktiviert."
+  restart_msg="Bitte beachten: Nach Docker-Installation ist evtl. ein Neustart oder eine neue Anmeldung nötig, damit Docker-Gruppenrechte aktiv werden."
+  port_prompts=(
+    "Port für SRT-Player (Standard: 4000)"
+    "Port für SRT-Sender (Standard: 4001)"
+    "Port für SRTLA (Standard: 5000)"
+    "Port für SLS Stats (Standard: 8080)"
+    "Port für RTMP-Server Stats/Web (Standard: 8090)"
+    "Port für RTMP (Standard: 1935)"
+    "Port für SLSMU (Standard: 3000)"
+  )
+else
+  docker_prompt="Install Docker? (y/n):"
+  rtmp_prompt="Install and start RTMP Server Docker container? (y/n):"
+  srtla_prompt="Install and start SRTLA Receiver Docker container? (y/n):"
+  watchtower_prompt="Install and start Watchtower container (automatic updates)? (y/n):"
+  ipv6_prompt="Enable Docker IPv6 support? (y/n):"
+  use_default_ports_prompt="Use default ports? (y/n):"
+  done_msg="Setup completed."
+  docker_install_msg="Starting Docker installation..."
+  docker_skip_msg="Skipping Docker installation."
+  rtmp_install_msg="Starting RTMP Server Docker container..."
+  rtmp_skip_msg="Skipping RTMP Server installation."
+  srtla_install_msg="Starting SRTLA Receiver Docker container..."
+  srtla_skip_msg="Skipping SRTLA Receiver installation."
+  watchtower_install_msg="Starting Watchtower Docker container..."
+  watchtower_skip_msg="Skipping Watchtower installation."
+  ipv6_enable_msg="Enabling Docker IPv6 support..."
+  ipv6_skip_msg="Not enabling Docker IPv6 support."
+  restart_msg="Please note: After Docker installation a reboot or re-login might be necessary to activate Docker group permissions."
+  port_prompts=(
+    "Port for SRT Player (default: 4000)"
+    "Port for SRT Sender (default: 4001)"
+    "Port for SRTLA (default: 5000)"
+    "Port for SLS Stats (default: 8080)"
+    "Port for RTMP Server Stats/Web (default: 8090)"
+    "Port for RTMP (default: 1935)"
+    "Port for SLSMU (default: 3000)"
+  )
+fi
+
+
+if [[ "$lang" == "de" ]]; then
   echo -e "${YELLOW}Was möchtest du tun?${NC}"
   echo " [1] Installieren"
   echo " [2] Starten"
@@ -319,113 +382,119 @@ elif [[ "$mainaction" == "4" ]]; then
   exit 0
 fi
 
-system_update_prompt
+if [[ "$mainaction" == "1" ]]; then
 
-read -rp "$docker_prompt " install_docker
-install_docker=${install_docker:-n}
-if [[ "$install_docker" =~ ^[JjYy] ]]; then
-  echo -e "$docker_install_msg"
-  distro_info=$(lsb_release -a 2>/dev/null || cat /etc/os-release)
-  install_docker_debian_ubuntu "$distro_info"
-else
-  echo -e "$docker_skip_msg"
-fi
+  system_update_prompt
 
-read -rp "$ipv6_prompt " enable_ipv6
-enable_ipv6=${enable_ipv6:-n}
-if [[ "$enable_ipv6" =~ ^[JjYy] ]]; then
-  echo -e "$ipv6_enable_msg"
-  if [[ -f /etc/docker/daemon.json ]]; then
-    sudo cp /etc/docker/daemon.json /etc/docker/daemon.json.bak_$(date +%s)
+  read -rp "$docker_prompt " install_docker
+  install_docker=${install_docker:-n}
+  if [[ "$install_docker" =~ ^[JjYy] ]]; then
+    echo -e "$docker_install_msg"
+    install_docker_debian_ubuntu
+  else
+    echo -e "$docker_skip_msg"
   fi
-  echo '{ "ipv6": true }' | sudo tee /etc/docker/daemon.json > /dev/null
-  sudo systemctl restart docker
-else
-  echo -e "$ipv6_skip_msg"
-fi
 
-read -rp "$use_default_ports_prompt " use_default_ports
-use_default_ports=${use_default_ports:-y}
-if [[ "$use_default_ports" =~ ^[JjYy] ]]; then
-  srt_player_port=4000
-  srt_sender_port=4001
-  srtla_port=5000
-  sls_stats_port=8080
-  rtmp_stats_port=8090
-  rtmp_port=1935
-  slsmu_port=3000
-else
-  srt_player_port=$(read_port "${port_prompts[0]}" 4000 "$lang")
-  srt_sender_port=$(read_port "${port_prompts[1]}" 4001 "$lang")
-  srtla_port=$(read_port "${port_prompts[2]}" 5000 "$lang")
-  sls_stats_port=$(read_port "${port_prompts[3]}" 8080 "$lang")
-  rtmp_stats_port=$(read_port "${port_prompts[4]}" 8090 "$lang")
-  rtmp_port=$(read_port "${port_prompts[5]}" 1935 "$lang")
-  slsmu_port=$(read_port "${port_prompts[6]}" 3000 "$lang")
-fi
-
-read -rp "$rtmp_prompt " install_rtmp
-install_rtmp=${install_rtmp:-n}
-if [[ "$install_rtmp" =~ ^[JjYy] ]]; then
-  echo -e "$rtmp_install_msg"
-  docker_pull_fallback "alexanderwagnerdev/rtmp-server:latest" "ghcr.io/alexanderwagnerdev/rtmp-server:latest"
-  docker rm -f rtmp-server 2>/dev/null || true
-  docker run -d --name rtmp-server --restart unless-stopped -p ${rtmp_stats_port}:80 -p ${rtmp_port}:1935 alexanderwagnerdev/rtmp-server:latest
-  health_check rtmp-server
-else
-  echo -e "$rtmp_skip_msg"
-fi
-
-read -rp "$srtla_prompt " install_srtla
-install_srtla=${install_srtla:-n}
-if [[ "$install_srtla" =~ ^[JjYy] ]]; then
-  echo -e "$srtla_install_msg"
-  if ! docker volume inspect srtla-server >/dev/null 2>&1; then
-    docker volume create srtla-server
+  read -rp "$ipv6_prompt " enable_ipv6
+  enable_ipv6=${enable_ipv6:-n}
+  if [[ "$enable_ipv6" =~ ^[JjYy] ]]; then
+    echo -e "$ipv6_enable_msg"
+    if [[ -f /etc/docker/daemon.json ]]; then
+      sudo cp /etc/docker/daemon.json /etc/docker/daemon.json.bak_$(date +%s)
+    fi
+    echo '{ "ipv6": true }' | sudo tee /etc/docker/daemon.json > /dev/null
+    sudo systemctl restart docker
+  else
+    echo -e "$ipv6_skip_msg"
   fi
-  volume_data_path="/var/lib/docker/volumes/srtla-server/_data"
-  sudo chown 3001:3001 "$volume_data_path"
-  sudo chmod 755 "$volume_data_path"
-  docker_pull_fallback "alexanderwagnerdev/srtla-server:latest" "ghcr.io/alexanderwagnerdev/srtla-server:latest"
-  docker rm -f srtla-server 2>/dev/null || true
-  docker run -d --name srtla-server --restart unless-stopped -v srtla-server:/var/lib/sls \
-    -p ${srt_player_port}:4000/udp -p ${srt_sender_port}:4001/udp -p ${srtla_port}:5000/udp -p ${sls_stats_port}:8080 \
-    alexanderwagnerdev/srtla-server:latest
-  health_check srtla-server
-  if [ ! -f ".apikey" ]; then
-    if [[ "$lang" == "de" ]]; then
-      echo -e "${INFO}Warte auf vollständiges Initialisieren des Containers...${NC}"
-    else
-      echo -e "${INFO}Waiting for the container to fully initialize...${NC}"
+
+  read -rp "$use_default_ports_prompt " use_default_ports
+  use_default_ports=${use_default_ports:-y}
+  if [[ "$use_default_ports" =~ ^[JjYy] ]]; then
+    srt_player_port=4000
+    srt_sender_port=4001
+    srtla_port=5000
+    sls_stats_port=8080
+    rtmp_stats_port=8090
+    rtmp_port=1935
+    slsmu_port=3000
+  else
+    srt_player_port=$(read_port "${port_prompts[0]}" 4000 "$lang")
+    srt_sender_port=$(read_port "${port_prompts[1]}" 4001 "$lang")
+    srtla_port=$(read_port "${port_prompts[2]}" 5000 "$lang")
+    sls_stats_port=$(read_port "${port_prompts[3]}" 8080 "$lang")
+    rtmp_stats_port=$(read_port "${port_prompts[4]}" 8090 "$lang")
+    rtmp_port=$(read_port "${port_prompts[5]}" 1935 "$lang")
+    slsmu_port=$(read_port "${port_prompts[6]}" 3000 "$lang")
+  fi
+
+  read -rp "$rtmp_prompt " install_rtmp
+  install_rtmp=${install_rtmp:-n}
+  if [[ "$install_rtmp" =~ ^[JjYy] ]]; then
+    echo -e "$rtmp_install_msg"
+    docker_pull_fallback "alexanderwagnerdev/rtmp-server:latest" "ghcr.io/alexanderwagnerdev/rtmp-server:latest"
+    docker rm -f rtmp-server 2>/dev/null || true
+    docker run -d --name rtmp-server --restart unless-stopped -p "${rtmp_stats_port}":80 -p "${rtmp_port}":1935 alexanderwagnerdev/rtmp-server:latest
+    health_check rtmp-server
+  else
+    echo -e "$rtmp_skip_msg"
+  fi
+
+  read -rp "$srtla_prompt " install_srtla
+  install_srtla=${install_srtla:-n}
+  if [[ "$install_srtla" =~ ^[JjYy] ]]; then
+    echo -e "$srtla_install_msg"
+    if ! docker volume inspect srtla-server >/dev/null 2>&1; then
+      docker volume create srtla-server
     fi
-    sleep 5
-    if [[ "$lang" == "de" ]]; then
-      echo -e "${INFO}Versuche API-Key zu extrahieren...${NC}"
-    else
-      echo -e "${INFO}Trying to extract API key...${NC}"
-    fi
-    apikey=$(extract_api_key)
-    if [[ -n "$apikey" ]]; then
-      echo "$apikey" > .apikey
+    volume_data_path="/var/lib/docker/volumes/srtla-server/_data"
+    sudo chown 3001:3001 "$volume_data_path"
+    sudo chmod 755 "$volume_data_path"
+    docker_pull_fallback "alexanderwagnerdev/srtla-server:latest" "ghcr.io/alexanderwagnerdev/srtla-server:latest"
+    docker rm -f srtla-server 2>/dev/null || true
+    docker run -d --name srtla-server --restart unless-stopped -v srtla-server:/var/lib/sls \
+      -p "${srt_player_port}":4000/udp -p "${srt_sender_port}":4001/udp -p "${srtla_port}":5000/udp -p "${sls_stats_port}":8080 \
+      alexanderwagnerdev/srtla-server:latest
+    health_check srtla-server
+
+    if [ ! -f ".apikey" ]; then
       if [[ "$lang" == "de" ]]; then
-        echo -e "${SUCCESS}API-Key erfolgreich extrahiert und gespeichert.${NC}"
+        echo -e "${INFO}Warte auf vollständiges Initialisieren des Containers...${NC}"
       else
-        echo -e "${SUCCESS}API key successfully extracted and saved.${NC}"
+        echo -e "${INFO}Waiting for the container to fully initialize...${NC}"
+      fi
+      sleep 5
+      if [[ "$lang" == "de" ]]; then
+        echo -e "${INFO}Versuche API-Key zu extrahieren...${NC}"
+      else
+        echo -e "${INFO}Trying to extract API key...${NC}"
+      fi
+      apikey=$(extract_api_key)
+      if [[ -n "$apikey" ]]; then
+        echo "$apikey" > .apikey
+        if [[ "$lang" == "de" ]]; then
+          echo -e "${SUCCESS}API-Key erfolgreich extrahiert und gespeichert.${NC}"
+        else
+          echo -e "${SUCCESS}API key successfully extracted and saved.${NC}"
+        fi
+      else
+        if [[ "$lang" == "de" ]]; then
+          echo -e "${ERROR}API-Key konnte nicht extrahiert werden.${NC}"
+        else
+          echo -e "${ERROR}API key could not be extracted.${NC}"
+        fi
       fi
     else
       if [[ "$lang" == "de" ]]; then
-        echo -e "${ERROR}API-Key konnte nicht extrahiert werden.${NC}"
+        echo -e "${SUCCESS}API-Key bereits vorhanden in .apikey${NC}"
       else
-        echo -e "${ERROR}API key could not be extracted.${NC}"
+        echo -e "${SUCCESS}API key already present in .apikey${NC}"
       fi
     fi
   else
-    if [[ "$lang" == "de" ]]; then
-      echo -e "${SUCCESS}API-Key bereits vorhanden in .apikey${NC}"
-    else
-      echo -e "${SUCCESS}API key already present in .apikey${NC}"
-    fi
+    echo -e "$srtla_skip_msg"
   fi
+
   public_ip=$(get_public_ip)
   if [[ "$public_ip" == "127.0.0.1" ]]; then
     if [[ "$lang" == "de" ]]; then
@@ -435,10 +504,11 @@ if [[ "$install_srtla" =~ ^[JjYy] ]]; then
     fi
   fi
   app_url="http://${public_ip}:${sls_stats_port}"
+
   docker_pull_fallback "alexanderwagnerdev/slsmu:latest" "ghcr.io/alexanderwagnerdev/slsmu:latest"
   docker rm -f slsmu 2>/dev/null || true
   docker run -d --name slsmu --restart unless-stopped \
-    -p ${slsmu_port}:3000 \
+    -p "${slsmu_port}":3000 \
     -e REACT_APP_BASE_URL="${app_url}" \
     -e REACT_APP_SRT_PLAYER_PORT="${srt_player_port}" \
     -e REACT_APP_SRT_SENDER_PORT="${srt_sender_port}" \
@@ -446,22 +516,22 @@ if [[ "$install_srtla" =~ ^[JjYy] ]]; then
     -e REACT_APP_SRTLA_PORT="${srtla_port}" \
     alexanderwagnerdev/slsmu:latest
   health_check slsmu
+
   print_available_services "$app_url" "$slsmu_port"
-else
-  echo -e "$srtla_skip_msg"
-fi
 
-read -rp "$watchtower_prompt " install_watchtower
-install_watchtower=${install_watchtower:-n}
-if [[ "$install_watchtower" =~ ^[JjYy] ]]; then
-  echo -e "$watchtower_install_msg"
-  docker_pull_fallback "containrrr/watchtower:latest" "ghcr.io/containrrr/watchtower:latest"
-  docker rm -f watchtower 2>/dev/null || true
-  docker run -d --name watchtower --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock containrrr/watchtower:latest --cleanup
-  health_check watchtower
-else
-  echo -e "$watchtower_skip_msg"
-fi
+  read -rp "$watchtower_prompt " install_watchtower
+  install_watchtower=${install_watchtower:-n}
+  if [[ "$install_watchtower" =~ ^[JjYy] ]]; then
+    echo -e "$watchtower_install_msg"
+    docker_pull_fallback "containrrr/watchtower:latest" "ghcr.io/containrrr/watchtower:latest"
+    docker rm -f watchtower 2>/dev/null || true
+    docker run -d --name watchtower --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock containrrr/watchtower:latest --cleanup
+    health_check watchtower
+  else
+    echo -e "$watchtower_skip_msg"
+  fi
 
-echo -e "$done_msg"
-echo -e "$restart_msg"
+  echo -e "$done_msg"
+  echo -e "$restart_msg"
+
+fi
