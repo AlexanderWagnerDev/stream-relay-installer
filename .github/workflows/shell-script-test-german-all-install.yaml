@@ -7,13 +7,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Run install script
+      - name: Run install script in german with all install
         run: |
           chmod +x ./install.sh
           ./install.sh <<EOF
           1
           1
-          j
           j
           j
           j
