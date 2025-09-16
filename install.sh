@@ -1,10 +1,10 @@
 #!/bin/bash
-
 set -e
 
 RED="\033[0;31m"
 GREEN="\033[0;32m"
 YELLOW="\033[1;33m"
+BLUE="\033[1;34m"
 NC="\033[0m"
 HEADER="${YELLOW}"
 SUCCESS="${GREEN}"
@@ -12,11 +12,11 @@ ERROR="${RED}"
 INFO="${YELLOW}"
 
 function print_ascii_art_de() {
-cat <<"EOF"
+  cat <<"EOF"
   ____  _                              ____      _               ___           _        _ _           
  / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \ ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
-  ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
+  ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | __ \ || (_| | | |  __/ |   
  |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
                                                          |___/                                                                                                
            von AlexanderWagnerDev
@@ -24,11 +24,11 @@ EOF
 }
 
 function print_ascii_art_en() {
-cat <<"EOF"
+  cat <<"EOF"
   ____  _                              ____      _               ___           _        _ _           
  / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \ ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
-  ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
+  ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | __ \ || (_| | | |  __/ |   
  |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
                                                          |___/                                                                                                                            
            by AlexanderWagnerDev
@@ -57,24 +57,14 @@ function install_docker_debian_ubuntu() {
   codename=$(lsb_release -cs)
   
   if [[ "$distro_name" == "ubuntu" ]]; then
-    if dpkg --compare-versions "$distro_version" ge "24.10"; then
-      repo_file="docker.source"
-      repo_entry="deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $codename stable"
-    else
-      repo_entry="deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $codename stable"
-    fi
+    repo_entry="deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $codename stable"
   elif [[ "$distro_name" == "debian" ]]; then
-    if dpkg --compare-versions "$distro_version" ge "13"; then
-      repo_file="docker.source"
-      repo_entry="deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $codename stable"
-    else
-      repo_entry="deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $codename stable"
-    fi
+    repo_entry="deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $codename stable"
   else
-    repo_entry="deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $codename stable"
+    repo_entry="deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $codename stable"
   fi
+
   echo "$repo_entry" | sudo tee /etc/apt/sources.list.d/$repo_file
-  
   sudo apt-get update
   sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   sudo systemctl enable docker
@@ -170,6 +160,7 @@ function print_available_services() {
   fi
 }
 
+function print_help() {
   if [[ "$lang" == "de" ]]; then
     echo -e "${HEADER}Hilfe:${NC}
   Mit diesem Script kannst du die Installation, das Starten, Stoppen oder das Entfernen der Stream-Services ausführen.
@@ -189,6 +180,7 @@ function print_available_services() {
   [uninstall]   Remove containers/images/optional volumes
   [help]        Show this help"
   fi
+}
 
 function health_check() {
   local cname="$1"
@@ -304,83 +296,7 @@ elif [[ "$mainaction" == "4" ]]; then
   exit 0
 fi
 
-if [[ "$lang" == "de" ]]; then
-  read -rp $'\033[1;33mSoll das System jetzt aktualisiert werden? (j/n):\033[0m ' sys_update
-  if [[ "$sys_update" =~ ^[JjYy] ]]; then
-    echo -e "${INFO}System wird aktualisiert...${NC}"
-    sudo apt-get update && sudo apt-get upgrade -y
-    echo -e "${SUCCESS}Systemaktualisierung abgeschlossen.${NC}"
-  else
-    echo -e "${INFO}Systemaktualisierung übersprungen.${NC}"
-  fi
-else
-  read -rp $'\033[1;33mDo you want to update the system now? (y/n):\033[0m ' sys_update
-  if [[ "$sys_update" =~ ^[Yy] ]]; then
-    echo -e "${INFO}Updating system...${NC}"
-    sudo apt-get update && sudo apt-get upgrade -y
-    echo -e "${SUCCESS}System update complete.${NC}"
-  else
-    echo -e "${INFO}System update skipped.${NC}"
-  fi
-fi
-
-if [[ "$lang" == "de" ]]; then
-  docker_prompt="Docker installieren? (j/n):"
-  rtmp_prompt="RTMP-Server Docker Container installieren und starten? (j/n):"
-  srtla_prompt="SRTLA-Receiver Docker Container installieren und starten? (j/n):"
-  watchtower_prompt="Watchtower Container (automatische Updates) installieren und starten? (j/n):"
-  ipv6_prompt="Docker IPv6 Unterstützung aktivieren? (j/n):"
-  use_default_ports_prompt="Standardports verwenden? (j/n):"
-  done_msg="Setup abgeschlossen."
-  docker_install_msg="Docker Installation wird gestartet..."
-  docker_skip_msg="Docker wird nicht installiert."
-  rtmp_install_msg="Starte RTMP-Server Docker-Container..."
-  rtmp_skip_msg="RTMP-Server wird nicht installiert."
-  srtla_install_msg="Starte SRTLA-Receiver Docker-Container..."
-  srtla_skip_msg="SRTLA-Receiver wird nicht installiert."
-  watchtower_install_msg="Starte Watchtower Docker-Container..."
-  watchtower_skip_msg="Watchtower wird nicht installiert."
-  ipv6_enable_msg="Docker IPv6 Unterstützung wird aktiviert..."
-  ipv6_skip_msg="Docker IPv6 Unterstützung wird nicht aktiviert."
-  restart_msg="Bitte beachten: Nach Docker-Installation ist evtl. ein Neustart oder eine neue Anmeldung nötig, damit Docker-Gruppenrechte aktiv werden."
-  port_prompts=(
-    "Port für SRT-Player (Standard: 4000)"
-    "Port für SRT-Sender (Standard: 4001)"
-    "Port für SRTLA (Standard: 5000)"
-    "Port für SLS Stats (Standard: 8080)"
-    "Port für RTMP-Server Stats/Web (Standard: 8090)"
-    "Port für RTMP (Standard: 1935)"
-    "Port für SLSMU (Standard: 3000)"
-  )
-else
-  docker_prompt="Install Docker? (y/n):"
-  rtmp_prompt="Install and start RTMP Server Docker container? (y/n):"
-  srtla_prompt="Install and start SRTLA Receiver Docker container? (y/n):"
-  watchtower_prompt="Install and start Watchtower container (automatic updates)? (y/n):"
-  ipv6_prompt="Enable Docker IPv6 support? (y/n):"
-  use_default_ports_prompt="Use default ports? (y/n):"
-  done_msg="Setup completed."
-  docker_install_msg="Starting Docker installation..."
-  docker_skip_msg="Skipping Docker installation."
-  rtmp_install_msg="Starting RTMP Server Docker container..."
-  rtmp_skip_msg="Skipping RTMP Server installation."
-  srtla_install_msg="Starting SRTLA Receiver Docker container..."
-  srtla_skip_msg="Skipping SRTLA Receiver installation."
-  watchtower_install_msg="Starting Watchtower Docker container..."
-  watchtower_skip_msg="Skipping Watchtower installation."
-  ipv6_enable_msg="Enabling Docker IPv6 support..."
-  ipv6_skip_msg="Not enabling Docker IPv6 support."
-  restart_msg="Please note: After Docker installation a reboot or re-login might be necessary to activate Docker group permissions."
-  port_prompts=(
-    "Port for SRT Player (default: 4000)"
-    "Port for SRT Sender (default: 4001)"
-    "Port for SRTLA (default: 5000)"
-    "Port for SLS Stats (default: 8080)"
-    "Port for RTMP Server Stats/Web (default: 8090)"
-    "Port for RTMP (default: 1935)"
-    "Port for SLSMU (default: 3000)"
-  )
-fi
+system_update_prompt
 
 read -rp "$docker_prompt " install_docker
 install_docker=${install_docker:-n}
@@ -396,7 +312,7 @@ read -rp "$ipv6_prompt " enable_ipv6
 enable_ipv6=${enable_ipv6:-n}
 if [[ "$enable_ipv6" =~ ^[JjYy] ]]; then
   echo -e "$ipv6_enable_msg"
-  if [ -f /etc/docker/daemon.json ]; then
+  if [[ -f /etc/docker/daemon.json ]]; then
     sudo cp /etc/docker/daemon.json /etc/docker/daemon.json.bak_$(date +%s)
   fi
   echo '{ "ipv6": true }' | sudo tee /etc/docker/daemon.json > /dev/null
@@ -453,7 +369,6 @@ if [[ "$install_srtla" =~ ^[JjYy] ]]; then
     -p ${srt_player_port}:4000/udp -p ${srt_sender_port}:4001/udp -p ${srtla_port}:5000/udp -p ${sls_stats_port}:8080 \
     alexanderwagnerdev/srtla-server:latest
   health_check srtla-server
-
   if [ ! -f ".apikey" ]; then
     if [[ "$lang" == "de" ]]; then
       echo -e "${INFO}Warte auf vollständiges Initialisieren des Containers...${NC}"
@@ -488,7 +403,6 @@ if [[ "$install_srtla" =~ ^[JjYy] ]]; then
       echo -e "${SUCCESS}API key already present in .apikey${NC}"
     fi
   fi
-
   public_ip=$(get_public_ip)
   if [[ "$public_ip" == "127.0.0.1" ]]; then
     if [[ "$lang" == "de" ]]; then
@@ -498,7 +412,6 @@ if [[ "$install_srtla" =~ ^[JjYy] ]]; then
     fi
   fi
   app_url="http://${public_ip}:${sls_stats_port}"
-
   docker_pull_fallback "alexanderwagnerdev/slsmu:latest" "ghcr.io/alexanderwagnerdev/slsmu:latest"
   docker rm -f slsmu 2>/dev/null || true
   docker run -d --name slsmu --restart unless-stopped \
@@ -510,7 +423,6 @@ if [[ "$install_srtla" =~ ^[JjYy] ]]; then
     -e REACT_APP_SRTLA_PORT="${srtla_port}" \
     alexanderwagnerdev/slsmu:latest
   health_check slsmu
-
   print_available_services "$app_url" "$slsmu_port"
 else
   echo -e "$srtla_skip_msg"
