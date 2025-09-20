@@ -68,72 +68,23 @@ function system_update_prompt() {
 }
 
 function install_docker_debian_ubuntu() {
-  local distro_name
-  local distro_version
-  local arch
-  distro_name=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
-  distro_version=$(lsb_release -rs)
-  arch=$(dpkg --print-architecture)
-
-  if [[ "$arch" == "amd64" ]]; then
-    arch_val="amd64"
-  elif [[ "$arch" == "arm64" ]]; then
-    arch_val="arm64"
-  else
-    arch_val="amd64"
-  fi
-
-  if [[ "$arch_val" != "$arch" ]]; then
-    if [[ "$lang" == "de" ]]; then
-      echo -e "${YELLOW}Warnung: Unbekannte Architektur '$arch', standardmäßig 'amd64' verwendet.${NC}"
-    else
-      echo -e "${YELLOW}Warning: Unknown architecture '$arch', defaulting to 'amd64'.${NC}"
-    fi
-  fi
-
   if [[ "$lang" == "de" ]]; then
-    echo -e "${INFO}Installation von Docker für Architektur: ${arch_val}${NC}"
+    echo -e "${INFO}Installation von Docker über das offizielle get.docker.com Script...${NC}"
   else
-    echo -e "${INFO}Installing Docker for architecture: ${arch_val}${NC}"
+    echo -e "${INFO}Installing Docker via official get.docker.com script...${NC}"
   fi
 
-  sudo apt-get update
-  sudo apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common
+  curl -fsSL https://get.docker.com | sh
 
-  curl -fsSL "https://download.docker.com/linux/${distro_name}/gpg" | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-
-  local repo_file="docker.list"
-  local codename
-  codename=$(lsb_release -cs)
-
-  if [[ "$distro_name" == "ubuntu" ]]; then
-    repo_entry="deb [arch=${arch_val} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu ${codename} stable"
-  elif [[ "$distro_name" == "debian" ]]; then
-    repo_entry="deb [arch=${arch_val} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian ${codename} stable"
-  else
-    repo_entry="deb [arch=${arch_val} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu ${codename} stable"
-  fi
-
-  echo "$repo_entry" | sudo tee "/etc/apt/sources.list.d/${repo_file}"
-
-  if [[ "$lang" == "de" ]]; then
-    echo -e "${INFO}Systemaktualisierung und Docker Installation wird gestartet...${NC}"
-  else
-    echo -e "${INFO}Updating system and starting Docker installation...${NC}"
-  fi
-
-  sudo apt-get update
-  sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   sudo systemctl enable docker
   sudo systemctl start docker
+  sudo usermod -aG docker "$USER"
 
   if [[ "$lang" == "de" ]]; then
     echo -e "${SUCCESS}Docker wurde erfolgreich installiert und gestartet.${NC}"
   else
     echo -e "${SUCCESS}Docker has been successfully installed and started.${NC}"
   fi
-
-  sudo usermod -aG docker "$USER"
 }
 
 function read_port () {
