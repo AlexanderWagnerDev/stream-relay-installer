@@ -1,6 +1,89 @@
-# Stream Relay Installer
-### WIP
+# Stream Relay Installer  
+### WIP (Work in Progress)
 
+This script installs **Docker** along with an **RTMP** and **SRTLA relay server** on Debian and Ubuntu systems. It requires root access and sets up a complete stream relay environment.
+
+---
+
+## Features
+
+- Installs Docker automatically  
+- Sets up RTMP and SRTLA relay server  
+- Supports English and German languages  
+- Designed for Debian and Ubuntu  
+- Can run on a fresh system  
+- Server fully operational after reboot  
+
+---
+
+## Requirements
+
+- Debian or Ubuntu system  
+- Root or sudo access  
+- Internet connection for downloading required packages  
+
+---
+
+## Installation
+
+Run the following command to start the installation:
 ```bash
 curl -sSL https://install.stream-relay-installer.de | sh
 ```
+
+
+After the script finishes, reboot your system for the changes to take effect.
+
+---
+
+## Usage
+
+Once rebooted, your stream relay server will be ready to use with default configurations.
+
+---
+
+## Deutsch
+
+Dieses Skript installiert **Docker** sowie einen **RTMP**- und **SRTLA-Relay-Server** auf Debian- und Ubuntu-Systemen. Es benötigt Root-Zugriff und richtet eine vollständige Stream-Relay-Umgebung ein.
+
+---
+
+## Funktionen
+
+- Automatische Installation von Docker  
+- Einrichtung von RTMP- und SRTLA-Relay-Server  
+- Unterstützung von Deutsch und Englisch  
+- Entwickelt für Debian und Ubuntu  
+- Kann auf einem frischen System ausgeführt werden  
+- Server nach Neustart einsatzbereit  
+
+---
+
+## Voraussetzungen
+
+- Debian- oder Ubuntu-System  
+- Root- oder sudo-Zugriff  
+- Internetverbindung zum Herunterladen der erforderlichen Pakete  
+
+---
+
+## Installation
+
+Führe den folgenden Befehl aus, um die Installation zu starten:
+```bash
+curl -sSL https://install.stream-relay-installer.de | sh
+```
+
+Nach Abschluss des Skripts den Server neu starten, damit die Änderungen übernommen werden.
+
+---
+
+## Nutzung
+
+Nach dem Neustart ist dein Stream-Relay-Server mit den Standardkonfigurationen einsatzbereit.
+
+---
+
+## License
+
+MIT
