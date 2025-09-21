@@ -28,7 +28,7 @@ This script installs **Docker** along with an **RTMP** and **SRTLA relay server*
 
 Run the following command to start the installation:
 ```bash
-curl -sSL https://install.stream-relay-installer.de | sh
+sudo curl -sSL https://install.stream-relay-installer.de | sh
 ```
 
 
@@ -71,7 +71,7 @@ Dieses Skript installiert **Docker** sowie einen **RTMP**- und **SRTLA-Relay-Ser
 
 Führe den folgenden Befehl aus, um die Installation zu starten:
 ```bash
-curl -sSL https://install.stream-relay-installer.de | sh
+sudo curl -sSL https://install.stream-relay-installer.de | sh
 ```
 
 Nach Abschluss des Skripts den Server neu starten, damit die Änderungen übernommen werden.
