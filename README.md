@@ -7,12 +7,22 @@ This script installs **Docker** along with an **RTMP** and **SRTLA relay server*
 
 ## Features
 
-- Installs Docker automatically  
+- Installs Docker  
 - Sets up RTMP and SRTLA relay server  
 - Supports English and German languages  
 - Designed for Debian and Ubuntu  
 - Can run on a fresh system  
 - Server fully operational after reboot  
+
+---
+
+## Included Software
+
+- **RTMP Server** – [AlexanderWagnerDev/rtmp-server-docker](https://github.com/AlexanderWagnerDev/rtmp-server-docker) 
+- **SRTLA Relay Server** – [AlexanderWagnerDev/srtla-server-docker](https://github.com/AlexanderWagnerDev/srtla-server-docker)
+- **SLS Management UI** - [AlexanderWagnerDev/slsmu-docker](https://github.com/AlexanderWagnerDev/slsmu-docker)
+
+SRTLA and SLSMU is based from [OpenIRL](https://github.com/OpenIRL)
 
 ---
 
@@ -50,12 +60,22 @@ Dieses Skript installiert **Docker** sowie einen **RTMP**- und **SRTLA-Relay-Ser
 
 ## Funktionen
 
-- Automatische Installation von Docker  
+- Installation von Docker  
 - Einrichtung von RTMP- und SRTLA-Relay-Server  
 - Unterstützung von Deutsch und Englisch  
 - Entwickelt für Debian und Ubuntu  
 - Kann auf einem frischen System ausgeführt werden  
 - Server nach Neustart einsatzbereit  
+
+---
+
+## Enthaltene Software
+
+- **RTMP Server** – [AlexanderWagnerDev/rtmp-server-docker](https://github.com/AlexanderWagnerDev/rtmp-server-docker) 
+- **SRTLA Relay Server** – [AlexanderWagnerDev/srtla-server-docker](https://github.com/AlexanderWagnerDev/srtla-server-docker)
+- **SLS Management UI** - [AlexanderWagnerDev/slsmu-docker](https://github.com/AlexanderWagnerDev/slsmu-docker)
+
+SRTLA und SLSMU basierend auf [OpenIRL](https://github.com/OpenIRL)
 
 ---
 
