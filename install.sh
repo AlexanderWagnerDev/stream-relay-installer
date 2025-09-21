@@ -284,7 +284,7 @@ if [[ "$lang" == "de" ]]; then
   docker_prompt="Docker installieren? (j/n):"
   rtmp_prompt="RTMP-Server Docker Container installieren und starten? (j/n):"
   srtla_prompt="SRTLA-Server Docker Container installieren und starten? (j/n):"
-  watchtower_prompt="Watchtower Container (automatische Updates) installieren und starten? (j/n):"
+  wud_prompt="WUD Container (automatische Updates) installieren und starten? (j/n):"
   ipv6_prompt="Docker IPv6 Unterstützung aktivieren? (j/n):"
   use_default_ports_prompt="Standardports verwenden? (j/n):"
   done_msg="Setup abgeschlossen."
@@ -294,8 +294,8 @@ if [[ "$lang" == "de" ]]; then
   rtmp_skip_msg="RTMP-Server wird nicht installiert."
   srtla_install_msg="Starte SRTLA-Server Docker-Container..."
   srtla_skip_msg="SRTLA-Server wird nicht installiert."
-  watchtower_install_msg="Starte Watchtower Docker-Container..."
-  watchtower_skip_msg="Watchtower wird nicht installiert."
+  wud_install_msg="Starte WUD Docker-Container..."
+  wud_skip_msg="WUD wird nicht installiert."
   ipv6_enable_msg="Docker IPv6 Unterstützung wird aktiviert..."
   ipv6_skip_msg="Docker IPv6 Unterstützung wird nicht aktiviert."
   restart_msg="Bitte beachten: Nach Docker-Installation ist evtl. ein Neustart oder eine neue Anmeldung nötig, damit Docker-Gruppenrechte aktiv werden."
@@ -312,7 +312,7 @@ else
   docker_prompt="Install Docker? (y/n):"
   rtmp_prompt="Install and start RTMP Server Docker container? (y/n):"
   srtla_prompt="Install and start SRTLA Server Docker container? (y/n):"
-  watchtower_prompt="Install and start Watchtower container (automatic updates)? (y/n):"
+  wud_prompt="Install and start WUD container (automatic updates)? (y/n):"
   ipv6_prompt="Enable Docker IPv6 support? (y/n):"
   use_default_ports_prompt="Use default ports? (y/n):"
   done_msg="Setup completed."
@@ -322,8 +322,8 @@ else
   rtmp_skip_msg="Skipping RTMP Server installation."
   srtla_install_msg="Starting SRTLA Server Docker container..."
   srtla_skip_msg="Skipping SRTLA Server installation."
-  watchtower_install_msg="Starting Watchtower Docker container..."
-  watchtower_skip_msg="Skipping Watchtower installation."
+  wud_install_msg="Starting WUD Docker container..."
+  wud_skip_msg="Skipping WUD installation."
   ipv6_enable_msg="Enabling Docker IPv6 support..."
   ipv6_skip_msg="Not enabling Docker IPv6 support."
   restart_msg="Please note: After Docker installation a reboot or re-login might be necessary to activate Docker group permissions."
@@ -506,20 +506,19 @@ if [[ "$mainaction" == "1" ]]; then
     alexanderwagnerdev/slsmu:latest
   health_check slsmu
 
-  read -rp "$watchtower_prompt " install_watchtower
-  install_watchtower=${install_watchtower:-n}
-  if [[ "$install_watchtower" =~ ^[JjYy] ]]; then
-    echo -e "$watchtower_install_msg"
-    docker_pull_fallback "containrrr/watchtower:latest" "ghcr.io/containrrr/watchtower:latest"
+  read -rp "$wud_prompt " install_wud
+  install_wud=${install_wud:-n}
+  if [[ "$install_wud" =~ ^[JjYy] ]]; then
+    echo -e "$wud_install_msg"
+    docker_pull_fallback "getwud/wud:latest" "ghcr.io/getwud/wud:latest"
     docker rm -f watchtower 2>/dev/null || true
-    docker run -d --name watchtower --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock containrrr/watchtower:latest --cleanup
+    docker run -d --name wud --restart unless-stopped -v "/var/run/docker.sock:/var/run/docker.sock" -p 3000:3000 -e WUD_TRIGGER_DOCKER_LOCAL_PRUNE=true getwud/wud:latest
   else
-    echo -e "$watchtower_skip_msg"
+    echo -e "$wud_skip_msg"
   fi
 
   print_available_services "$app_url" "$slsmu_port"
 
   echo -e "$done_msg"
   echo -e "$restart_msg"
-
 fi
