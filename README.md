@@ -22,7 +22,7 @@ This script installs **Docker** along with an **RTMP** and **SRTLA relay server*
 - **SRTLA Relay Server** – [AlexanderWagnerDev/srtla-server-docker](https://github.com/AlexanderWagnerDev/srtla-server-docker)
 - **SLS Management UI** - [AlexanderWagnerDev/slsmu-docker](https://github.com/AlexanderWagnerDev/slsmu-docker)
 
-SRTLA and SLSMU is based from [OpenIRL](https://github.com/OpenIRL)
+SRTLA and SLSMU is based on [OpenIRL](https://github.com/OpenIRL)
 
 ---
 
