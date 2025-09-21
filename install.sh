@@ -512,7 +512,7 @@ if [[ "$mainaction" == "1" ]]; then
     echo -e "$wud_install_msg"
     docker_pull_fallback "getwud/wud:latest" "ghcr.io/getwud/wud:latest"
     docker rm -f watchtower 2>/dev/null || true
-    docker run -d --name wud --restart unless-stopped -v "/var/run/docker.sock:/var/run/docker.sock" -p 3000:3000 -e WUD_TRIGGER_DOCKER_LOCAL_PRUNE=true getwud/wud:latest
+    docker run -d --name wud --restart unless-stopped -v "/var/run/docker.sock:/var/run/docker.sock" -p 3003:3000 -e WUD_TRIGGER_DOCKER_LOCAL_PRUNE=true getwud/wud:latest
   else
     echo -e "$wud_skip_msg"
   fi
