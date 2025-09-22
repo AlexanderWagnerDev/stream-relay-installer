@@ -1,3 +1,5 @@
+<img src="https://assets.stream-relay-installer.de/Logo.png" alt="Logo" width="400" />
+
 # Stream Relay Installer  
 ### WIP (Work in Progress)
 
