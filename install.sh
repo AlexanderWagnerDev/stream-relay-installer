@@ -303,7 +303,7 @@ if [[ "$lang" == "de" ]]; then
     "Port für SRT-Player (Standard: 4000)"
     "Port für SRT-Sender (Standard: 4001)"
     "Port für SRTLA (Standard: 5000)"
-    "Port für SLS Stats (Standard: 8080)"
+    "Port für SLS Stats (Standard: 8789)"
     "Port für RTMP-Server Stats/Web (Standard: 8090)"
     "Port für RTMP (Standard: 1935)"
     "Port für SLSMU (Standard: 3000)"
@@ -331,7 +331,7 @@ else
     "Port for SRT Player (default: 4000)"
     "Port for SRT Sender (default: 4001)"
     "Port for SRTLA (default: 5000)"
-    "Port for SLS Stats (default: 8080)"
+    "Port for SLS Stats (default: 8789)"
     "Port for RTMP Server Stats/Web (default: 8090)"
     "Port for RTMP (default: 1935)"
     "Port for SLSMU (default: 3000)"
@@ -403,7 +403,7 @@ if [[ "$mainaction" == "1" ]]; then
     srt_player_port=4000
     srt_sender_port=4001
     srtla_port=5000
-    sls_stats_port=8080
+    sls_stats_port=8789
     rtmp_stats_port=8090
     rtmp_port=1935
     slsmu_port=3000
@@ -411,7 +411,7 @@ if [[ "$mainaction" == "1" ]]; then
     srt_player_port=$(read_port "${port_prompts[0]}" 4000 "$lang")
     srt_sender_port=$(read_port "${port_prompts[1]}" 4001 "$lang")
     srtla_port=$(read_port "${port_prompts[2]}" 5000 "$lang")
-    sls_stats_port=$(read_port "${port_prompts[3]}" 8080 "$lang")
+    sls_stats_port=$(read_port "${port_prompts[3]}" 8789 "$lang")
     rtmp_stats_port=$(read_port "${port_prompts[4]}" 8090 "$lang")
     rtmp_port=$(read_port "${port_prompts[5]}" 1935 "$lang")
     slsmu_port=$(read_port "${port_prompts[6]}" 3000 "$lang")
