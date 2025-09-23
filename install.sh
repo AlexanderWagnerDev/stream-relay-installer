@@ -119,6 +119,7 @@ function get_public_ip() {
   echo "$ip"
 }
 
+
 function docker_pull_fallback() {
   local image="$1"
   local fallback_image="$2"
@@ -290,6 +291,8 @@ if [[ "$lang" == "de" ]]; then
   wud_prompt="WUD Container (automatische Updates) installieren und starten? (j/n):"
   ipv6_prompt="Docker IPv6 Unterstützung aktivieren? (j/n):"
   use_default_ports_prompt="Standardports verwenden? (j/n):"
+  manual_ip_prompt="Möchtest du eine Domain oder IP manuell eingeben? (j/n):"
+  enter_ip_prompt="Bitte Domain oder IP eingeben:"
   done_msg="Setup abgeschlossen."
   docker_install_msg="Docker Installation wird gestartet..."
   docker_skip_msg="Docker wird nicht installiert."
@@ -318,6 +321,8 @@ else
   wud_prompt="Install and start WUD container (automatic updates)? (y/n):"
   ipv6_prompt="Enable Docker IPv6 support? (y/n):"
   use_default_ports_prompt="Use default ports? (y/n):"
+  manual_ip_prompt="Do you want to enter a domain or IP manually? (y/n):"
+  enter_ip_prompt="Please enter the domain or IP:"
   done_msg="Setup completed."
   docker_install_msg="Starting Docker installation..."
   docker_skip_msg="Skipping Docker installation."
@@ -418,6 +423,24 @@ if [[ "$mainaction" == "1" ]]; then
     rtmp_stats_port=$(read_port "${port_prompts[4]}" 8090 "$lang")
     rtmp_port=$(read_port "${port_prompts[5]}" 1935 "$lang")
     slsmu_port=$(read_port "${port_prompts[6]}" 3000 "$lang")
+  fi
+
+  public_ip=$(get_public_ip)
+
+  if [[ "$lang" == "de" ]]; then
+    read -rp "$manual_ip_prompt " manual_ip_choice
+  else
+    read -rp "$manual_ip_prompt " manual_ip_choice
+  fi
+  manual_ip_choice=${manual_ip_choice:-n}
+
+  if [[ "$manual_ip_choice" =~ ^[JjYy] ]]; then
+    if [[ "$lang" == "de" ]]; then
+      read -rp "$enter_ip_prompt " custom_ip
+    else
+      read -rp "$enter_ip_prompt " custom_ip
+    fi
+    public_ip="$custom_ip"
   fi
 
   read -rp "$rtmp_prompt " install_rtmp
