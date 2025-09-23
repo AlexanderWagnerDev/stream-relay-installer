@@ -482,7 +482,7 @@ if [[ "$mainaction" == "1" ]]; then
     sudo chmod -R 755 "$volume_data_path"
     docker_pull_fallback "alexanderwagnerdev/srtla-server:latest" "ghcr.io/alexanderwagnerdev/srtla-server:latest"
     docker rm -f srtla-server 2>/dev/null || true
-    docker run -d --name srtla-server --restart unless-stopped -v srtla-server:/var/lib/sls \
+    docker run -d --name srtla-server --restart unless-stopped -v /var/lib/docker/volumes/srtla-server/_data:/var/lib/sls \
       -p "${srt_player_port}":4000/udp -p "${srt_sender_port}":4001/udp -p "${srtla_port}":5000/udp -p "${sls_stats_port}":8080/tcp \
       alexanderwagnerdev/srtla-server:latest
     health_check srtla-server
