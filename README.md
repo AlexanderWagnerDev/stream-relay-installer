@@ -40,7 +40,7 @@ SRTLA and SLSMU is based on [OpenIRL](https://github.com/OpenIRL)
 
 Run the following command to start the installation:
 ```bash
-sudo curl -sSL https://install.stream-relay-installer.de | sh
+sudo curl -sSL https://install.stream-relay-installer.de -o install.sh && chmod +x install.sh && ./install.sh
 ```
 
 
