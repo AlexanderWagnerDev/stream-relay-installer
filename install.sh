@@ -17,9 +17,9 @@ function print_ascii_art_de() {
   ____  _                              ____      _               ___           _        _ _           
  / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \ ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
-  ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | __ \ || (_| | | |  __/ |   
+  ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
  |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
-                                                         |___/                                                                                                
+                                                         |___/                                                                                                  
            von AlexanderWagnerDev
 EOF
 }
@@ -29,9 +29,9 @@ function print_ascii_art_en() {
   ____  _                              ____      _               ___           _        _ _           
  / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \ ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
-  ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | __ \ || (_| | | |  __/ |   
+  ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
  |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
-                                                         |___/                                                                                                                            
+                                                         |___/                                                                                                                             
            by AlexanderWagnerDev
 EOF
 }
@@ -105,6 +105,10 @@ function read_port () {
 }
 
 function get_public_ip() {
+  if [[ -n "$MANUAL_IP" ]]; then
+    echo "$MANUAL_IP"
+    return
+  fi
   local ip=""
   ip=$(curl -fs4 https://ipinfo.io/ip 2>/dev/null || echo "")
   if [[ -z "$ip" ]]; then
@@ -118,7 +122,6 @@ function get_public_ip() {
   fi
   echo "$ip"
 }
-
 
 function docker_pull_fallback() {
   local image="$1"
@@ -346,25 +349,6 @@ else
   )
 fi
 
-if [[ "$lang" == "de" ]]; then
-  echo -e "${YELLOW}Was möchtest du tun?${NC}"
-  echo " [1] Installieren"
-  echo " [2] Starten"
-  echo " [3] Stoppen"
-  echo " [4] Deinstallieren"
-  echo " [5] Hilfe"
-  read -rp "Auswahl [1]: " mainaction
-else
-  echo -e "${YELLOW}What do you want to do?${NC}"
-  echo " [1] Install"
-  echo " [2] Start"
-  echo " [3] Stop"
-  echo " [4] Uninstall"
-  echo " [5] Help"
-  read -rp "Choice [1]: " mainaction
-fi
-mainaction=${mainaction:-1}
-
 if [[ "$mainaction" == "5" ]]; then
   print_help
   exit 0
@@ -425,6 +409,7 @@ if [[ "$mainaction" == "1" ]]; then
     slsmu_port=$(read_port "${port_prompts[6]}" 3000 "$lang")
   fi
 
+  MANUAL_IP=""
   public_ip=$(get_public_ip)
 
   if [[ "$lang" == "de" ]]; then
@@ -440,8 +425,19 @@ if [[ "$mainaction" == "1" ]]; then
     else
       read -rp "$enter_ip_prompt " custom_ip
     fi
+    MANUAL_IP="$custom_ip"
     public_ip="$custom_ip"
   fi
+
+  if [[ "$public_ip" == "127.0.0.1" ]]; then
+    if [[ "$lang" == "de" ]]; then
+      echo -e "${YELLOW}Warnung: Öffentliche IP konnte nicht ermittelt werden, localhost wird als APP_URL benutzt.${NC}"
+    else
+      echo -e "${YELLOW}Warning: Public IP could not be determined, localhost will be used as APP_URL.${NC}"
+    fi
+  fi
+
+  app_url="http://${public_ip}:${sls_stats_port}"
 
   read -rp "$rtmp_prompt " install_rtmp
   install_rtmp=${install_rtmp:-n}
@@ -509,16 +505,6 @@ if [[ "$mainaction" == "1" ]]; then
   else
     echo -e "$srtla_skip_msg"
   fi
-
-  public_ip=$(get_public_ip)
-  if [[ "$public_ip" == "127.0.0.1" ]]; then
-    if [[ "$lang" == "de" ]]; then
-      echo -e "${YELLOW}Warnung: Öffentliche IP konnte nicht ermittelt werden, localhost wird als APP_URL benutzt.${NC}"
-    else
-      echo -e "${YELLOW}Warning: Public IP could not be determined, localhost will be used as APP_URL.${NC}"
-    fi
-  fi
-  app_url="http://${public_ip}:${sls_stats_port}"
 
   docker_pull_fallback "alexanderwagnerdev/slsmu:latest" "ghcr.io/alexanderwagnerdev/slsmu:latest"
   docker rm -f slsmu 2>/dev/null || true
