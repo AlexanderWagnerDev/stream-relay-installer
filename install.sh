@@ -16,10 +16,10 @@ function print_ascii_art_de() {
   cat <<"EOF"
   ____  _                              ____      _               ___           _        _ _           
  / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \ ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
- \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
-  ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
- |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
-                                                         |___/                                                                                                  
+ ___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
+  ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | __ \ || (_| | | |  __/ |   
+ |____/ __|_|  ___|__,_|_| |_| |_| |_| ____|_|__,_|__, | |___|_| |_|___/____,_|_|_|___|_|   
+                                                         |___/                                                                                                
            von AlexanderWagnerDev
 EOF
 }
@@ -28,10 +28,10 @@ function print_ascii_art_en() {
   cat <<"EOF"
   ____  _                              ____      _               ___           _        _ _           
  / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \ ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
- \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
-  ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
- |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
-                                                         |___/                                                                                                                             
+ ___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
+  ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | __ \ || (_| | | |  __/ |   
+ |____/ __|_|  ___|__,_|_| |_| |_| |_| ____|_|__,_|__, | |___|_| |_|___/____,_|_|_|___|_|   
+                                                         |___/                                                                                                                            
            by AlexanderWagnerDev
 EOF
 }
@@ -349,6 +349,25 @@ else
   )
 fi
 
+if [[ "$lang" == "de" ]]; then
+  echo -e "${YELLOW}Was möchtest du tun?${NC}"
+  echo " [1] Installieren"
+  echo " [2] Starten"
+  echo " [3] Stoppen"
+  echo " [4] Deinstallieren"
+  echo " [5] Hilfe"
+  read -rp "Auswahl [1]: " mainaction
+else
+  echo -e "${YELLOW}What do you want to do?${NC}"
+  echo " [1] Install"
+  echo " [2] Start"
+  echo " [3] Stop"
+  echo " [4] Uninstall"
+  echo " [5] Help"
+  read -rp "Choice [1]: " mainaction
+fi
+mainaction=${mainaction:-1}
+
 if [[ "$mainaction" == "5" ]]; then
   print_help
   exit 0
@@ -509,13 +528,13 @@ if [[ "$mainaction" == "1" ]]; then
   docker_pull_fallback "alexanderwagnerdev/slsmu:latest" "ghcr.io/alexanderwagnerdev/slsmu:latest"
   docker rm -f slsmu 2>/dev/null || true
   docker run -d --name slsmu --restart unless-stopped \
-    -p "${slsmu_port}":3000/tcp \
-    -e REACT_APP_BASE_URL="${app_url}" \
-    -e REACT_APP_SRT_PLAYER_PORT="${srt_player_port}" \
-    -e REACT_APP_SRT_SENDER_PORT="${srt_sender_port}" \
-    -e REACT_APP_SLS_STATS_PORT="${sls_stats_port}" \
-    -e REACT_APP_SRTLA_PORT="${srtla_port}" \
-    alexanderwagnerdev/slsmu:latest
+  -p "${slsmu_port}":3000/tcp \
+  -e REACT_APP_BASE_URL="${app_url}" \
+  -e REACT_APP_SRT_PLAYER_PORT="${srt_player_port}" \
+  -e REACT_APP_SRT_SENDER_PORT="${srt_sender_port}" \
+  -e REACT_APP_SLS_STATS_PORT="${sls_stats_port}" \
+  -e REACT_APP_SRTLA_PORT="${srtla_port}" \
+  alexanderwagnerdev/slsmu:latest
   health_check slsmu
 
   read -rp "$wud_prompt " install_wud
