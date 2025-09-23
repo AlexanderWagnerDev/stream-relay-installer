@@ -146,15 +146,17 @@ function docker_pull_fallback() {
 function extract_api_key() {
   local apikey=""
   apikey=$(docker logs srtla-server 2>/dev/null | grep "Generated default admin API key:" | sed 's/.*Generated default admin API key: \([A-Za-z0-9]*\).*/\1/' | tail -1)
+  echo "$apikey"
 }
 
 function print_available_services() {
   local app_url="$1"
   local management_port="$2"
+  local apikey="$3"
   if [[ "$lang" == "de" ]]; then
     echo -e "${HEADER}Verfügbare Dienste:${NC}"
     echo -e "${SUCCESS}Management UI: http://${public_ip}:${management_port}${NC}"
-    echo -e "${SUCCESS}API Key: $apikey${NC}"
+    echo -e "${SUCCESS}API Key: ${apikey}${NC}"
     echo -e "${SUCCESS}Backend API: ${app_url}${NC}"
     echo -e "${SUCCESS}SRTLA Sender URL ZUM SENDEN (Beispiel): srtla://${public_ip}:${srtla_port}?streamid=livekey${NC}"
     echo -e "${SUCCESS}SRT Sender URL ZUM SENDEN (Beispiel): srt://${public_ip}:${srt_sender_port}?streamid=livekey${NC}"
@@ -165,7 +167,7 @@ function print_available_services() {
   else
     echo -e "${HEADER}Available services:${NC}"
     echo -e "${SUCCESS}Management UI: http://${public_ip}:${management_port}${NC}"
-    echo -e "${SUCCESS}API Key: $apikey${NC}"
+    echo -e "${SUCCESS}API Key: ${apikey}${NC}"
     echo -e "${SUCCESS}Backend API: ${app_url}${NC}"
     echo -e "${SUCCESS}SRTLA Sender URL TO SEND (Example): srtla://${public_ip}:${srtla_port}?streamid=livekey${NC}"
     echo -e "${SUCCESS}SRT Sender URL TO SEND (Example): srt://${public_ip}:${srt_sender_port}?streamid=livekey${NC}"
@@ -518,7 +520,7 @@ if [[ "$mainaction" == "1" ]]; then
     echo -e "$wud_skip_msg"
   fi
 
-  print_available_services "$app_url" "$slsmu_port"
+  print_available_services "$app_url" "$slsmu_port" "$apikey"
 
   echo -e "$done_msg"
   echo -e "$restart_msg"
