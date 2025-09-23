@@ -220,7 +220,7 @@ function health_check() {
 }
 
 function stop_services() {
-  for cname in rtmp-server srtla-server slsmu watchtower; do
+  for cname in rtmp-server srtla-server slsmu wud; do
     if docker ps --format '{{.Names}}' | grep -q "^$cname$"; then
       docker stop "$cname"
       [[ "$lang" == "de" ]] && echo -e "${INFO}Container $cname gestoppt.${NC}" || echo -e "${INFO}Stopped container $cname.${NC}"
@@ -229,20 +229,20 @@ function stop_services() {
 }
 
 function start_services() {
-  for cname in rtmp-server srtla-server slsmu watchtower; do
+  for cname in rtmp-server srtla-server slsmu wud; do
     docker start "$cname" 2>/dev/null
     health_check "$cname"
   done
 }
 
 function uninstall_services() {
-  for cname in rtmp-server srtla-server slsmu watchtower; do
+  for cname in rtmp-server srtla-server slsmu wud; do
     if docker ps -a --format '{{.Names}}' | grep -q "^$cname$"; then
       docker rm -f "$cname"
       [[ "$lang" == "de" ]] && echo -e "${INFO}Container $cname entfernt.${NC}" || echo -e "${INFO}Removed container $cname.${NC}"
     fi
   done
-  for img in alexanderwagnerdev/rtmp-server alexanderwagnerdev/srtla-server alexanderwagnerdev/slsmu containrrr/watchtower; do
+  for img in alexanderwagnerdev/rtmp-server alexanderwagnerdev/srtla-server alexanderwagnerdev/slsmu getwud/wud; do
     docker rmi -f "$img" 2>/dev/null
     docker rmi -f "ghcr.io/${img}" 2>/dev/null
   done
