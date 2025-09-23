@@ -154,7 +154,7 @@ function print_available_services() {
   if [[ "$lang" == "de" ]]; then
     echo -e "${HEADER}Verfügbare Dienste:${NC}"
     echo -e "${SUCCESS}Management UI: http://${public_ip}:${management_port}${NC}"
-    ech0 -e "${SUCCESS}API Key: $apikey${NC}"
+    echo -e "${SUCCESS}API Key: $apikey${NC}"
     echo -e "${SUCCESS}Backend API: ${app_url}${NC}"
     echo -e "${SUCCESS}SRTLA Sender URL ZUM SENDEN (Beispiel): srtla://${public_ip}:${srtla_port}?streamid=livekey${NC}"
     echo -e "${SUCCESS}SRT Sender URL ZUM SENDEN (Beispiel): srt://${public_ip}:${srt_sender_port}?streamid=livekey${NC}"
@@ -165,7 +165,7 @@ function print_available_services() {
   else
     echo -e "${HEADER}Available services:${NC}"
     echo -e "${SUCCESS}Management UI: http://${public_ip}:${management_port}${NC}"
-    ech0 -e "${SUCCESS}API Key: $apikey${NC}"
+    echo -e "${SUCCESS}API Key: $apikey${NC}"
     echo -e "${SUCCESS}Backend API: ${app_url}${NC}"
     echo -e "${SUCCESS}SRTLA Sender URL TO SEND (Example): srtla://${public_ip}:${srtla_port}?streamid=livekey${NC}"
     echo -e "${SUCCESS}SRT Sender URL TO SEND (Example): srt://${public_ip}:${srt_sender_port}?streamid=livekey${NC}"
