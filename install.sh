@@ -478,8 +478,8 @@ if [[ "$mainaction" == "1" ]]; then
       docker volume create srtla-server
     fi
     volume_data_path="/var/lib/docker/volumes/srtla-server/_data"
-    sudo chown 3001:3001 "$volume_data_path"
-    sudo chmod 755 "$volume_data_path"
+    sudo chown -R 3001:3001 "$volume_data_path"
+    sudo chmod -R 755 "$volume_data_path"
     docker_pull_fallback "alexanderwagnerdev/srtla-server:latest" "ghcr.io/alexanderwagnerdev/srtla-server:latest"
     docker rm -f srtla-server 2>/dev/null || true
     docker run -d --name srtla-server --restart unless-stopped -v srtla-server:/var/lib/sls \
@@ -493,7 +493,7 @@ if [[ "$mainaction" == "1" ]]; then
       else
         echo -e "${INFO}Waiting for the container to fully initialize...${NC}"
       fi
-      sleep 5
+      sleep 10
       if [[ "$lang" == "de" ]]; then
         echo -e "${INFO}Versuche API-Key zu extrahieren...${NC}"
       else
