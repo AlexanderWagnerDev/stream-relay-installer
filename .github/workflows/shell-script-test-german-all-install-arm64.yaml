@@ -1,12 +1,12 @@
 name: Test Installer Script in German with install all on arm64
-permissions:
-  contents: read
 on: 
   workflow_dispatch:
   
 jobs:
   test-shell-script:
     runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v5
       - name: Run install script in German with install all on arm64
