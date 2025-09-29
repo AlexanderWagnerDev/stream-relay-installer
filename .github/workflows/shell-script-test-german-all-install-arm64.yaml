@@ -1,4 +1,6 @@
 name: Test Installer Script in German with install all on arm64
+permissions:
+  contents: read
 on: 
   workflow_dispatch:
   
