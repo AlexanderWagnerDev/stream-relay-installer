@@ -5,6 +5,8 @@ on:
 jobs:
   test-shell-script:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v5
       - name: Run install script in English with install all on amd64
