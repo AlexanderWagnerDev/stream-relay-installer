@@ -19,7 +19,7 @@ function print_ascii_art_de() {
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
  |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
-                                                         |___/                                                                                                                    
+                                                         |___/                                                                                                                   
            von AlexanderWagnerDev
 EOF
 }
@@ -159,7 +159,7 @@ function print_available_services() {
   local apikey="$3"
   if [[ "$lang" == "de" ]]; then
     echo -e "${HEADER}Verfügbare Dienste:${NC}"
-    echo -e "${SUCCESS}Management UI: http://${public_ip}:${management_port}${NC}"
+    echo -e "${SUCCESS}SLSPanel UI: http://${public_ip}:${management_port}${NC}"
     echo -e "${SUCCESS}API Key: ${apikey}${NC}"
     echo -e "${SUCCESS}Backend API: ${app_url}${NC}"
     echo -e "${SUCCESS}SRTLA Sender URL ZUM SENDEN (Beispiel): srtla://${public_ip}:${srtla_port}?streamid=livekey${NC}"
@@ -170,7 +170,7 @@ function print_available_services() {
     echo -e "${SUCCESS}RTMP URL ZUM SENDEN UND EMPFANGEN (Example): rtmp://${public_ip}:${rtmp_port}/publish/livekey${NC}"
   else
     echo -e "${HEADER}Available services:${NC}"
-    echo -e "${SUCCESS}Management UI: http://${public_ip}:${management_port}${NC}"
+    echo -e "${SUCCESS}SLSPanel UI: http://${public_ip}:${management_port}${NC}"
     echo -e "${SUCCESS}API Key: ${apikey}${NC}"
     echo -e "${SUCCESS}Backend API: ${app_url}${NC}"
     echo -e "${SUCCESS}SRTLA Sender URL TO SEND (Example): srtla://${public_ip}:${srtla_port}?streamid=livekey${NC}"
@@ -224,7 +224,7 @@ function health_check() {
 }
 
 function stop_services() {
-  for cname in rtmp-server srtla-server slsmu wud; do
+  for cname in rtmp-server srtla-server slspanel wud; do
     if docker ps --format '{{.Names}}' | grep -q "^$cname$"; then
       docker stop "$cname"
       [[ "$lang" == "de" ]] && echo -e "${INFO}Container $cname gestoppt.${NC}" || echo -e "${INFO}Stopped container $cname.${NC}"
@@ -233,22 +233,22 @@ function stop_services() {
 }
 
 function start_services() {
-  for cname in rtmp-server srtla-server slsmu wud; do
+  for cname in rtmp-server srtla-server slspanel wud; do
     docker start "$cname" 2>/dev/null
     health_check "$cname"
   done
 }
 
 function uninstall_services() {
-  for cname in rtmp-server srtla-server slsmu wud; do
+  for cname in rtmp-server srtla-server slspanel wud; do
     if docker ps -a --format '{{.Names}}' | grep -q "^$cname$"; then
       docker rm -f "$cname"
       [[ "$lang" == "de" ]] && echo -e "${INFO}Container $cname entfernt.${NC}" || echo -e "${INFO}Removed container $cname.${NC}"
     fi
   done
-  for img in alexanderwagnerdev/rtmp-server alexanderwagnerdev/srtla-server alexanderwagnerdev/slsmu getwud/wud; do
+  for img in alexanderwagnerdev/rtmp-server alexanderwagnerdev/srtla-server alexanderwagnerdev/slspanel getwud/wud; do
     docker rmi -f "$img" 2>/dev/null
-    docker rmi -f "ghcr.io/${img}" 2>/dev/null
+    docker rmi -f "ghcr.io/$img" 2>/dev/null
   done
   if [[ "$lang" == "de" ]]; then
     read -rp $'\033[1;33mSollen auch Volumes gelöscht werden? (j/n):\033[0m ' rmvol
@@ -315,7 +315,7 @@ if [[ "$lang" == "de" ]]; then
     "Port für SLS Stats (Standard: 8789)"
     "Port für RTMP-Server Stats/Web (Standard: 8090)"
     "Port für RTMP (Standard: 1935)"
-    "Port für SLSMU (Standard: 3000)"
+    "Port für SLSPanel WebUI (Standard: 8000)"
   )
 else
   docker_prompt="Install Docker? (y/n):"
@@ -345,7 +345,7 @@ else
     "Port for SLS Stats (default: 8789)"
     "Port for RTMP Server Stats/Web (default: 8090)"
     "Port for RTMP (default: 1935)"
-    "Port for SLSMU (default: 3000)"
+    "Port for SLSPanel WebUI (default: 8000)"
   )
 fi
 
@@ -417,7 +417,7 @@ if [[ "$mainaction" == "1" ]]; then
     sls_stats_port=8789
     rtmp_stats_port=8090
     rtmp_port=1935
-    slsmu_port=3000
+    slspanel_port=8000
   else
     srt_player_port=$(read_port "${port_prompts[0]}" 4000 "$lang")
     srt_sender_port=$(read_port "${port_prompts[1]}" 4001 "$lang")
@@ -425,7 +425,7 @@ if [[ "$mainaction" == "1" ]]; then
     sls_stats_port=$(read_port "${port_prompts[3]}" 8789 "$lang")
     rtmp_stats_port=$(read_port "${port_prompts[4]}" 8090 "$lang")
     rtmp_port=$(read_port "${port_prompts[5]}" 1935 "$lang")
-    slsmu_port=$(read_port "${port_prompts[6]}" 3000 "$lang")
+    slspanel_port=$(read_port "${port_prompts[6]}" 8000 "$lang")
   fi
 
   MANUAL_IP=""
@@ -463,7 +463,6 @@ if [[ "$mainaction" == "1" ]]; then
   if [[ "$install_rtmp" =~ ^[JjYy] ]]; then
     echo -e "$rtmp_install_msg"
     docker_pull_fallback "alexanderwagnerdev/rtmp-server:latest" "ghcr.io/alexanderwagnerdev/rtmp-server:latest"
-    docker rm -f rtmp-server 2>/dev/null || true
     docker run -d --name rtmp-server --restart unless-stopped -p "${rtmp_stats_port}":80/tcp -p "${rtmp_port}":1935/tcp alexanderwagnerdev/rtmp-server:latest
     health_check rtmp-server
   else
@@ -481,7 +480,6 @@ if [[ "$mainaction" == "1" ]]; then
     sudo chown -R 3001:3001 "$volume_data_path"
     sudo chmod -R 755 "$volume_data_path"
     docker_pull_fallback "alexanderwagnerdev/srtla-server:latest" "ghcr.io/alexanderwagnerdev/srtla-server:latest"
-    docker rm -f srtla-server 2>/dev/null || true
     docker run -d --name srtla-server --restart unless-stopped -v /var/lib/docker/volumes/srtla-server/_data:/var/lib/sls \
       -p "${srt_player_port}":4000/udp -p "${srt_sender_port}":4001/udp -p "${srtla_port}":5000/udp -p "${sls_stats_port}":8080/tcp \
       alexanderwagnerdev/srtla-server:latest
@@ -525,30 +523,74 @@ if [[ "$mainaction" == "1" ]]; then
     echo -e "$srtla_skip_msg"
   fi
 
-  docker_pull_fallback "alexanderwagnerdev/slsmu:latest" "ghcr.io/alexanderwagnerdev/slsmu:latest"
-  docker rm -f slsmu 2>/dev/null || true
-  docker run -d --name slsmu --restart unless-stopped \
-  -p "${slsmu_port}":3000/tcp \
-  -e REACT_APP_BASE_URL="${app_url}" \
-  -e REACT_APP_SRT_PLAYER_PORT="${srt_player_port}" \
-  -e REACT_APP_SRT_SENDER_PORT="${srt_sender_port}" \
-  -e REACT_APP_SLS_STATS_PORT="${sls_stats_port}" \
-  -e REACT_APP_SRTLA_PORT="${srtla_port}" \
-  alexanderwagnerdev/slsmu:latest
-  health_check slsmu
-
   read -rp "$wud_prompt " install_wud
   install_wud=${install_wud:-n}
   if [[ "$install_wud" =~ ^[JjYy] ]]; then
     echo -e "$wud_install_msg"
     docker_pull_fallback "getwud/wud:latest" "ghcr.io/getwud/wud:latest"
-    docker rm -f watchtower 2>/dev/null || true
     docker run -d --name wud --restart unless-stopped -v "/var/run/docker.sock:/var/run/docker.sock" -p 3000 -e WUD_TRIGGER_DOCKER_LOCAL_PRUNE=true getwud/wud:latest
   else
     echo -e "$wud_skip_msg"
   fi
 
-  print_available_services "$app_url" "$slsmu_port" "$apikey"
+  read -rp "$([ \"$lang\" == \"de\" ] && echo \"SLSPanel installieren und starten? (j/n):\" || echo \"Install and start SLSPanel? (y/n):\") " install_slspanel
+  install_slspanel=${install_slspanel:-n}
+  if [[ "$install_slspanel" =~ ^[JjYy] ]]; then
+
+    read -rp "$([ \"$lang\" == \"de\" ] && echo \"Login für SLSPanel aktivieren? (j/n):\" || echo \"Enable login for SLSPanel? (y/n):\") " enable_login
+    enable_login=${enable_login:-n}
+
+    if [[ "$enable_login" =~ ^[JjYy] ]]; then
+      read -rp "$([ \"$lang\" == \"de\" ] && echo \"Benutzername für SLSPanel Admin: \" || echo \"Username for SLSPanel admin: \") " slspanel_username
+      slspanel_username=${slspanel_username:-admin}
+      read -rsp "$([ \"$lang\" == \"de\" ] && echo \"Passwort für SLSPanel Admin: \" || echo \"Password for SLSPanel admin: \") " slspanel_password
+      echo ""
+      slspanel_password=${slspanel_password:-password}
+    else
+      slspanel_username=""
+      slspanel_password=""
+    fi
+
+    echo -e "$([ \"$lang\" == \"de\" ] && echo \"Starte SLSPanel Docker-Container...\" || echo \"Starting SLSPanel Docker container...\")"
+
+    slspanel_api_url="http://${public_ip}:${sls_stats_port}"
+
+    if [[ "$enable_login" =~ ^[JjYy] ]]; then
+      docker run -d --name slspanel --restart unless-stopped \
+        -e REQUIRE_LOGIN=True \
+        -e WEB_USERNAME="${slspanel_username}" \
+        -e WEB_PASSWORD="${slspanel_password}" \
+        -e SLS_API_URL="${slspanel_api_url}" \
+        -e SLS_API_KEY=$(cat .apikey 2>/dev/null || echo your_api_key) \
+        -e SLS_DOMAIN_IP="${public_ip}" \
+        -e LANG="${lang}" \
+        -e TZ="$(cat /etc/timezone 2>/dev/null || echo UTC)" \
+        -e SRT_PUBLISH_PORT=${srt_sender_port} \
+        -e SRT_PLAYER_PORT=${srt_player_port} \
+        -e SRTLA_PUBLISH_PORT=${srtla_port} \
+        -e SLS_STATS_PORT=${sls_stats_port} \
+        -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:latest
+    else
+      docker run -d --name slspanel --restart unless-stopped \
+        -e REQUIRE_LOGIN=False \
+        -e SLS_API_URL="${slspanel_api_url}" \
+        -e SLS_API_KEY=$(cat .apikey 2>/dev/null || echo your_api_key) \
+        -e SLS_DOMAIN_IP="${public_ip}" \
+        -e LANG="${lang}" \
+        -e TZ="$(cat /etc/timezone 2>/dev/null || echo UTC)" \
+        -e SRT_PUBLISH_PORT=${srt_sender_port} \
+        -e SRT_PLAYER_PORT=${srt_player_port} \
+        -e SRTLA_PUBLISH_PORT=${srtla_port} \
+        -e SLS_STATS_PORT=${sls_stats_port} \
+        -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:latest
+    fi
+
+    health_check slspanel
+  else
+    echo -e "$([ \"$lang\" == \"de\" ] && echo \"SLSPanel wird nicht installiert.\" || echo \"Skipping SLSPanel installation.\")"
+  fi
+
+  print_available_services "$app_url" "$slspanel_port" "$(cat .apikey 2>/dev/null || echo 'N/A')"
 
   echo -e "$done_msg"
   echo -e "$restart_msg"
