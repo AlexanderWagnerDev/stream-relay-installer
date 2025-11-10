@@ -566,7 +566,7 @@ if [[ "$mainaction" == "1" ]]; then
         -e SLS_API_KEY="${apikey}" \
         -e SLS_DOMAIN_IP="${public_ip}" \
         -e LANG="${lang}" \
-        -e TZ="${TZ)" \
+        -e TZ="${TZ}" \
         -e SRT_PUBLISH_PORT=${srt_sender_port} \
         -e SRT_PLAYER_PORT=${srt_player_port} \
         -e SRTLA_PUBLISH_PORT=${srtla_port} \
@@ -579,7 +579,7 @@ if [[ "$mainaction" == "1" ]]; then
         -e SLS_API_KEY="${apikey}" \
         -e SLS_DOMAIN_IP="${public_ip}" \
         -e LANG="${lang}" \
-        -e TZ="${TZ)" \
+        -e TZ="${TZ}" \
         -e SRT_PUBLISH_PORT=${srt_sender_port} \
         -e SRT_PLAYER_PORT=${srt_player_port} \
         -e SRTLA_PUBLISH_PORT=${srtla_port} \
