@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -e
-set -x
 
 RED="\033[0;31m"
 GREEN="\033[0;32m"
@@ -297,6 +296,10 @@ if [[ "$lang" == "de" ]]; then
   use_default_ports_prompt="Standardports verwenden? (j/n):"
   manual_ip_prompt="Möchtest du eine Domain oder IP manuell eingeben? (j/n):"
   enter_ip_prompt="Bitte Domain oder IP eingeben:"
+  slspanel_install_prompt="SLSPanel installieren und starten? (j/n):"
+  slspanel_login_prompt="Login für SLSPanel aktivieren? (j/n):"
+  slspanel_username_prompt="Benutzername für SLSPanel Admin: "
+  slspanel_password_prompt="Passwort für SLSPanel Admin: "
   done_msg="Setup abgeschlossen."
   docker_install_msg="Docker Installation wird gestartet..."
   docker_skip_msg="Docker wird nicht installiert."
@@ -327,6 +330,10 @@ else
   use_default_ports_prompt="Use default ports? (y/n):"
   manual_ip_prompt="Do you want to enter a domain or IP manually? (y/n):"
   enter_ip_prompt="Please enter the domain or IP:"
+  slspanel_install_prompt="Install and start SLSPanel? (y/n):"
+  slspanel_login_prompt="Enable login for SLSPanel? (y/n):"
+  slspanel_username_prompt="Username for SLSPanel admin: "
+  slspanel_password_prompt="Password for SLSPanel admin: "
   done_msg="Setup completed."
   docker_install_msg="Starting Docker installation..."
   docker_skip_msg="Skipping Docker installation."
@@ -534,17 +541,29 @@ if [[ "$mainaction" == "1" ]]; then
     echo -e "$wud_skip_msg"
   fi
 
-  read -rp "$([ \"$lang\" == \"de\" ] && echo \"SLSPanel installieren und starten? (j/n):\" || echo \"Install and start SLSPanel? (y/n):\") " install_slspanel
+  if [[ "$lang" == "de" ]]; then
+    slspanel_install_prompt="SLSPanel installieren und starten? (j/n): "
+    slspanel_login_prompt="Login für SLSPanel aktivieren? (j/n): "
+    slspanel_username_prompt="Benutzername für SLSPanel Admin: "
+    slspanel_password_prompt="Passwort für SLSPanel Admin: "
+  else
+    slspanel_install_prompt="Install and start SLSPanel? (y/n): "
+    slspanel_login_prompt="Enable login for SLSPanel? (y/n): "
+    slspanel_username_prompt="Username for SLSPanel admin: "
+    slspanel_password_prompt="Password for SLSPanel admin: "
+  fi
+
+  read -rp "$slspanel_install_prompt" install_slspanel
   install_slspanel=${install_slspanel:-n}
   if [[ "$install_slspanel" =~ ^[JjYy] ]]; then
 
-    read -rp "$([ \"$lang\" == \"de\" ] && echo \"Login für SLSPanel aktivieren? (j/n):\" || echo \"Enable login for SLSPanel? (y/n):\") " enable_login
+    read -rp "$slspanel_login_prompt" enable_login
     enable_login=${enable_login:-n}
 
     if [[ "$enable_login" =~ ^[JjYy] ]]; then
-      read -rp "$([ \"$lang\" == \"de\" ] && echo \"Benutzername für SLSPanel Admin: \" || echo \"Username for SLSPanel admin: \") " slspanel_username
+      read -rp "$slspanel_username_prompt" slspanel_username
       slspanel_username=${slspanel_username:-admin}
-      read -rsp "$([ \"$lang\" == \"de\" ] && echo \"Passwort für SLSPanel Admin: \" || echo \"Password for SLSPanel admin: \") " slspanel_password
+      read -rsp "$slspanel_password_prompt" slspanel_password
       echo ""
       slspanel_password=${slspanel_password:-password}
     else
