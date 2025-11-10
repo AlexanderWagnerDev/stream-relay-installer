@@ -1,7 +1,7 @@
 name: Test Installer Script in German with install all on amd64
 on: 
   workflow_dispatch:
-  
+
 jobs:
   test-shell-script:
     runs-on: ubuntu-latest
@@ -15,12 +15,16 @@ jobs:
           ./install.sh <<EOF
           1
           1
-          j
-          j
-          j
-          j
+          y
+          y
+          y
+          y
           n
-          j
-          j
-          j
+          y
+          y
+          y
+          y
+          y
+          admin
+          password
           EOF
