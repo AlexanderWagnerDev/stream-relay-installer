@@ -1,7 +1,7 @@
 name: Test Installer Script in English with install all on amd64
 on: 
   workflow_dispatch:
-  
+
 jobs:
   test-shell-script:
     runs-on: ubuntu-latest
@@ -13,14 +13,18 @@ jobs:
         run: |
           chmod +x ./install.sh
           ./install.sh <<EOF
-          2
-          1
-          y
-          y
-          y
-          y
-          n
-          y
-          y
-          y
-          EOF
+2          # Language choice: English
+1          # Choose to install
+y          # System update? Yes
+y          # Install Docker? Yes
+y          # Enable IPv6 support? Yes
+y          # Use default ports? Yes
+n          # Manual IP input? No
+y          # Install RTMP Server? Yes
+y          # Install SRTLA Server? Yes
+y          # Install WUD? Yes
+y          # Install SLSPanel? Yes
+y          # Enable login for SLSPanel? Yes
+admin      # Username for SLSPanel admin
+password   # Password for SLSPanel admin
+EOF
