@@ -554,6 +554,7 @@ if [[ "$mainaction" == "1" ]]; then
     echo -e "$([ \"$lang\" == \"de\" ] && echo \"Starte SLSPanel Docker-Container...\" || echo \"Starting SLSPanel Docker container...\")"
 
     slspanel_api_url="http://${public_ip}:${sls_stats_port}"
+    apikey=$(cat .apikey 2>/dev/null || echo your_api_key)
 
     if [[ "$enable_login" =~ ^[JjYy] ]]; then
       docker run -d --name slspanel --restart unless-stopped \
@@ -561,7 +562,7 @@ if [[ "$mainaction" == "1" ]]; then
         -e WEB_USERNAME="${slspanel_username}" \
         -e WEB_PASSWORD="${slspanel_password}" \
         -e SLS_API_URL="${slspanel_api_url}" \
-        -e SLS_API_KEY=$(cat .apikey 2>/dev/null || echo your_api_key) \
+        -e SLS_API_KEY="${apikey}" \
         -e SLS_DOMAIN_IP="${public_ip}" \
         -e LANG="${lang}" \
         -e TZ="$(cat /etc/timezone 2>/dev/null || echo UTC)" \
@@ -574,7 +575,7 @@ if [[ "$mainaction" == "1" ]]; then
       docker run -d --name slspanel --restart unless-stopped \
         -e REQUIRE_LOGIN=False \
         -e SLS_API_URL="${slspanel_api_url}" \
-        -e SLS_API_KEY=$(cat .apikey 2>/dev/null || echo your_api_key) \
+        -e SLS_API_KEY="${apikey}" \
         -e SLS_DOMAIN_IP="${public_ip}" \
         -e LANG="${lang}" \
         -e TZ="$(cat /etc/timezone 2>/dev/null || echo UTC)" \
