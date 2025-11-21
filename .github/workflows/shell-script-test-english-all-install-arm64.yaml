@@ -8,7 +8,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Run install script in English with install all on arm64
         run: |
           chmod +x ./install.sh
