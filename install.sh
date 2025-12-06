@@ -250,6 +250,16 @@ function uninstall_services() {
     docker rmi -f "$img" 2>/dev/null
     docker rmi -f "ghcr.io/$img" 2>/dev/null
   done
+  
+  if [ -f ".apikey" ]; then
+  rm -f ".apikey"
+  if [[ "$lang" == "de" ]]; then
+    echo -e "${SUCCESS}API-Key Datei (.apikey) gelöscht.${NC}"
+  else
+    echo -e "${SUCCESS}API key file (.apikey) deleted.${NC}"
+  fi
+  fi
+  
   if [[ "$lang" == "de" ]]; then
     read -rp $'\033[1;33mSollen auch Volumes gelöscht werden? (j/n):\033[0m ' rmvol
     if [[ "$rmvol" =~ ^[Jj] ]]; then
