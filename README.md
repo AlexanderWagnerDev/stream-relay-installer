@@ -22,9 +22,9 @@ This script installs **Docker** along with an **RTMP** and **SRTLA relay server*
 
 - **RTMP Server** – [AlexanderWagnerDev/rtmp-server-docker](https://github.com/AlexanderWagnerDev/rtmp-server-docker) 
 - **SRTLA Relay Server** – [AlexanderWagnerDev/srtla-server-docker](https://github.com/AlexanderWagnerDev/srtla-server-docker)
-- **SLS Management UI** - [AlexanderWagnerDev/slsmu-docker](https://github.com/AlexanderWagnerDev/slsmu-docker)
+- **SLSPanel** - [AlexanderWagnerDev/slspanel-docker](https://github.com/AlexanderWagnerDev/slspanel-docker)
 
-SRTLA and SLSMU is based on [OpenIRL](https://github.com/OpenIRL)
+SRTLA Server is based on [OpenIRL](https://github.com/OpenIRL)
 
 ---
 
@@ -75,9 +75,9 @@ Dieses Skript installiert **Docker** sowie einen **RTMP**- und **SRTLA-Relay-Ser
 
 - **RTMP Server** – [AlexanderWagnerDev/rtmp-server-docker](https://github.com/AlexanderWagnerDev/rtmp-server-docker) 
 - **SRTLA Relay Server** – [AlexanderWagnerDev/srtla-server-docker](https://github.com/AlexanderWagnerDev/srtla-server-docker)
-- **SLS Management UI** - [AlexanderWagnerDev/slsmu-docker](https://github.com/AlexanderWagnerDev/slsmu-docker)
+- **SLSPanel** - [AlexanderWagnerDev/slspanel-docker](https://github.com/AlexanderWagnerDev/slspanel-docker)
 
-SRTLA und SLSMU basierend auf [OpenIRL](https://github.com/OpenIRL)
+SRTLA Server basierend auf [OpenIRL](https://github.com/OpenIRL)
 
 ---
 
@@ -93,7 +93,7 @@ SRTLA und SLSMU basierend auf [OpenIRL](https://github.com/OpenIRL)
 
 Führe den folgenden Befehl aus, um die Installation zu starten:
 ```bash
-sudo curl -sSL https://install.stream-relay-installer.de | sh
+sudo curl -sSL https://install.stream-relay-installer.de -o install.sh && chmod +x install.sh && ./install.sh
 ```
 
 Nach Abschluss des Skripts den Server neu starten, damit die Änderungen übernommen werden.
