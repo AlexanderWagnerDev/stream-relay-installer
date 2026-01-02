@@ -1,7 +1,6 @@
-<img src="https://assets.stream-relay-installer.de/Logo.png" alt="Logo" width="400" />
+<img src="https://assets.stream-relay-installer.de/Logo.webp" alt="Logo" width="400" />
 
 # Stream Relay Installer  
-### WIP (Work in Progress)
 
 This script installs **Docker** along with an **RTMP** and **SRTLA relay server** on Debian and Ubuntu systems. It requires root access and sets up a complete stream relay environment.
 
@@ -23,6 +22,7 @@ This script installs **Docker** along with an **RTMP** and **SRTLA relay server*
 - **RTMP Server** – [AlexanderWagnerDev/rtmp-server-docker](https://github.com/AlexanderWagnerDev/rtmp-server-docker) 
 - **SRTLA Relay Server** – [AlexanderWagnerDev/srtla-server-docker](https://github.com/AlexanderWagnerDev/srtla-server-docker)
 - **SLSPanel** - [AlexanderWagnerDev/slspanel-docker](https://github.com/AlexanderWagnerDev/slspanel-docker)
+- WUD - [getwud/wud](https://github.com/getwud/wud)
 
 SRTLA Server is based on [OpenIRL](https://github.com/OpenIRL)
 
@@ -76,6 +76,7 @@ Dieses Skript installiert **Docker** sowie einen **RTMP**- und **SRTLA-Relay-Ser
 - **RTMP Server** – [AlexanderWagnerDev/rtmp-server-docker](https://github.com/AlexanderWagnerDev/rtmp-server-docker) 
 - **SRTLA Relay Server** – [AlexanderWagnerDev/srtla-server-docker](https://github.com/AlexanderWagnerDev/srtla-server-docker)
 - **SLSPanel** - [AlexanderWagnerDev/slspanel-docker](https://github.com/AlexanderWagnerDev/slspanel-docker)
+- WUD - [getwud/wud](https://github.com/getwud/wud)
 
 SRTLA Server basierend auf [OpenIRL](https://github.com/OpenIRL)
 
