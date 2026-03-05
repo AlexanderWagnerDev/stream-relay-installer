@@ -18,7 +18,7 @@ function print_ascii_art_de() {
  / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \ ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
- |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
+ |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\__|_|   
                                                          |___/                                                                                                                   
            von AlexanderWagnerDev
 EOF
@@ -30,7 +30,7 @@ function print_ascii_art_en() {
  / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \ ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
- |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
+ |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\__|_|   
                                                          |___/                                                                                                                                                
            by AlexanderWagnerDev
 EOF
@@ -185,20 +185,22 @@ function print_available_services() {
 function print_help() {
   if [[ "$lang" == "de" ]]; then
     echo -e "${HEADER}Hilfe:${NC}
-  Mit diesem Script kannst du die Installation, das Starten, Stoppen oder das Entfernen der Stream-Services ausführen.
+  Mit diesem Script kannst du die Installation, das Starten, Stoppen, Aktualisieren oder das Entfernen der Stream-Services ausführen.
   ${GREEN}Funktionen:${NC}
   [installieren]    Installation durchführen
   [starten]         Container starten
   [stoppen]         Container stoppen
+  [aktualisieren]   Container und Images aktualisieren
   [deinstallieren]  Container/Images/optional Volumes entfernen
   [hilfe]           Diese Hilfe anzeigen"
   else
     echo -e "${HEADER}Help:${NC}
-  This script lets you install, start, stop or uninstall the stream services interactively.
+  This script lets you install, start, stop, update or uninstall the stream services interactively.
   ${GREEN}Functions:${NC}
   [install]     Run installation
   [start]       Start containers
   [stop]        Stop containers
+  [update]      Update containers and images
   [uninstall]   Remove containers/images/optional volumes
   [help]        Show this help"
   fi
@@ -237,6 +239,140 @@ function start_services() {
     docker start "$cname" 2>/dev/null
     health_check "$cname"
   done
+}
+
+function get_container_config() {
+  local cname="$1"
+  local config
+  config=$(docker inspect "$cname" 2>/dev/null)
+  if [[ $? -ne 0 ]]; then
+    echo ""
+    return 1
+  fi
+  echo "$config"
+}
+
+function recreate_container() {
+  local cname="$1"
+  local image="$2"
+  local fallback_image="$3"
+  
+  if ! docker ps -a --format '{{.Names}}' | grep -q "^$cname$"; then
+    [[ "$lang" == "de" ]] && echo -e "${INFO}Container $cname existiert nicht, überspringe...${NC}" || echo -e "${INFO}Container $cname does not exist, skipping...${NC}"
+    return 0
+  fi
+  
+  [[ "$lang" == "de" ]] && echo -e "${INFO}Aktualisiere Container: $cname${NC}" || echo -e "${INFO}Updating container: $cname${NC}"
+  
+  local config
+  config=$(get_container_config "$cname")
+  
+  local restart_policy
+  restart_policy=$(echo "$config" | grep -o '"RestartPolicy":{[^}]*}' | grep -o '"Name":"[^"]*"' | cut -d'"' -f4)
+  
+  local ports_args=""
+  local ports
+  ports=$(echo "$config" | grep -o '"PortBindings":{[^}]*}' | sed 's/"PortBindings"://g')
+  
+  if [[ -n "$ports" ]]; then
+    while IFS= read -r line; do
+      if [[ "$line" =~ \"([0-9]+)/([a-z]+)\" ]]; then
+        port="${BASH_REMATCH[1]}"
+        proto="${BASH_REMATCH[2]}"
+        host_port=$(echo "$line" | grep -o '"HostPort":"[0-9]*"' | cut -d'"' -f4)
+        if [[ -n "$host_port" ]]; then
+          ports_args="$ports_args -p ${host_port}:${port}/${proto}"
+        fi
+      fi
+    done <<< "$ports"
+  fi
+  
+  local env_args=""
+  local envs
+  envs=$(echo "$config" | grep -o '"Env":\[[^]]*\]' | sed 's/"Env"://g' | tr -d '[]"' | tr ',' '\n')
+  
+  while IFS= read -r env; do
+    if [[ -n "$env" && "$env" != "PATH="* && "$env" != "HOME="* ]]; then
+      env_args="$env_args -e \"$env\""
+    fi
+  done <<< "$envs"
+  
+  local volumes_args=""
+  local mounts
+  mounts=$(echo "$config" | grep -o '"Mounts":\[[^]]*\]' | sed 's/"Mounts":\[//g' | sed 's/\]$//g')
+  
+  if [[ -n "$mounts" ]]; then
+    while IFS= read -r mount; do
+      if [[ "$mount" =~ \"Source\":\"([^\"]+)\",.*\"Destination\":\"([^\"]+)\" ]]; then
+        src="${BASH_REMATCH[1]}"
+        dst="${BASH_REMATCH[2]}"
+        volumes_args="$volumes_args -v \"$src:$dst\""
+      fi
+    done <<< "$mounts"
+  fi
+  
+  local labels_args=""
+  local labels
+  labels=$(echo "$config" | grep -o '"Labels":{[^}]*}' | sed 's/"Labels"://g' | tr -d '{}' | tr ',' '\n')
+  
+  while IFS= read -r label; do
+    if [[ -n "$label" && "$label" =~ \"([^\"]+)\":\"([^\"]+)\" ]]; then
+      key="${BASH_REMATCH[1]}"
+      val="${BASH_REMATCH[2]}"
+      if [[ "$key" == "wud."* ]]; then
+        labels_args="$labels_args --label \"$key=$val\""
+      fi
+    fi
+  done <<< "$labels"
+  
+  docker stop "$cname" 2>/dev/null
+  docker rm "$cname" 2>/dev/null
+  
+  docker_pull_fallback "$image" "$fallback_image"
+  
+  local restart_flag=""
+  if [[ "$restart_policy" == "unless-stopped" ]]; then
+    restart_flag="--restart unless-stopped"
+  elif [[ "$restart_policy" == "always" ]]; then
+    restart_flag="--restart always"
+  fi
+  
+  local run_cmd="docker run -d --name $cname $restart_flag $ports_args $env_args $volumes_args $labels_args $image"
+  
+  eval "$run_cmd"
+  
+  [[ "$lang" == "de" ]] && echo -e "${SUCCESS}Container $cname wurde neu erstellt.${NC}" || echo -e "${SUCCESS}Container $cname has been recreated.${NC}"
+  
+  sleep 3
+  health_check "$cname"
+}
+
+function update_services() {
+  [[ "$lang" == "de" ]] && echo -e "${HEADER}=== Container-Update wird gestartet ===${NC}" || echo -e "${HEADER}=== Starting container update ===${NC}"
+  
+  local containers=("rtmp-server" "srtla-server" "slspanel" "wud")
+  local images=("alexanderwagnerdev/rtmp-server:latest" "alexanderwagnerdev/srtla-server:latest" "alexanderwagnerdev/slspanel:latest" "getwud/wud:latest")
+  local fallback_images=("ghcr.io/alexanderwagnerdev/rtmp-server:latest" "ghcr.io/alexanderwagnerdev/srtla-server:latest" "ghcr.io/alexanderwagnerdev/slspanel:latest" "ghcr.io/getwud/wud:latest")
+  
+  for i in "${!containers[@]}"; do
+    recreate_container "${containers[$i]}" "${images[$i]}" "${fallback_images[$i]}"
+  done
+  
+  [[ "$lang" == "de" ]] && echo -e "${SUCCESS}=== Container-Update abgeschlossen ===${NC}" || echo -e "${SUCCESS}=== Container update completed ===${NC}"
+  
+  if docker ps -a --format '{{.Names}}' | grep -q "^srtla-server$"; then
+    local apikey
+    apikey=$(cat .apikey 2>/dev/null || echo "")
+    if [[ -z "$apikey" ]]; then
+      [[ "$lang" == "de" ]] && echo -e "${INFO}Versuche API-Key neu zu extrahieren...${NC}" || echo -e "${INFO}Trying to re-extract API key...${NC}"
+      sleep 5
+      apikey=$(extract_api_key)
+      if [[ -n "$apikey" ]]; then
+        echo "$apikey" > .apikey
+        [[ "$lang" == "de" ]] && echo -e "${SUCCESS}API-Key erfolgreich extrahiert.${NC}" || echo -e "${SUCCESS}API key successfully extracted.${NC}"
+      fi
+    fi
+  fi
 }
 
 function uninstall_services() {
@@ -374,21 +510,23 @@ if [[ "$lang" == "de" ]]; then
   echo " [1] Installieren"
   echo " [2] Starten"
   echo " [3] Stoppen"
-  echo " [4] Deinstallieren"
-  echo " [5] Hilfe"
+  echo " [4] Aktualisieren"
+  echo " [5] Deinstallieren"
+  echo " [6] Hilfe"
   read -rp "Auswahl [1]: " mainaction
 else
   echo -e "${YELLOW}What do you want to do?${NC}"
   echo " [1] Install"
   echo " [2] Start"
   echo " [3] Stop"
-  echo " [4] Uninstall"
-  echo " [5] Help"
+  echo " [4] Update"
+  echo " [5] Uninstall"
+  echo " [6] Help"
   read -rp "Choice [1]: " mainaction
 fi
 mainaction=${mainaction:-1}
 
-if [[ "$mainaction" == "5" ]]; then
+if [[ "$mainaction" == "6" ]]; then
   print_help
   exit 0
 elif [[ "$mainaction" == "2" ]]; then
@@ -398,6 +536,9 @@ elif [[ "$mainaction" == "3" ]]; then
   stop_services
   exit 0
 elif [[ "$mainaction" == "4" ]]; then
+  update_services
+  exit 0
+elif [[ "$mainaction" == "5" ]]; then
   uninstall_services
   exit 0
 fi
