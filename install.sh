@@ -328,6 +328,16 @@ function recreate_container() {
   docker stop "$cname" 2>/dev/null
   docker rm "$cname" 2>/dev/null
   
+  # Remove old images with all possible tags to ensure fresh pull
+  [[ "$lang" == "de" ]] && echo -e "${INFO}Entferne alte Images...${NC}" || echo -e "${INFO}Removing old images...${NC}"
+  docker rmi -f "$image" 2>/dev/null || true
+  docker rmi -f "$fallback_image" 2>/dev/null || true
+  # Also remove images with other tags (latest, beta, etc.) from the same repository
+  local image_base=$(echo "$image" | cut -d':' -f1)
+  docker images --format "{{.Repository}}:{{.Tag}}" | grep "^${image_base}:" | xargs -r docker rmi -f 2>/dev/null || true
+  local fallback_base=$(echo "$fallback_image" | cut -d':' -f1)
+  docker images --format "{{.Repository}}:{{.Tag}}" | grep "^${fallback_base}:" | xargs -r docker rmi -f 2>/dev/null || true
+  
   docker_pull_fallback "$image" "$fallback_image"
   
   local restart_flag=""
@@ -351,8 +361,8 @@ function update_services() {
   [[ "$lang" == "de" ]] && echo -e "${HEADER}=== Container-Update wird gestartet ===${NC}" || echo -e "${HEADER}=== Starting container update ===${NC}"
   
   local containers=("rtmp-server" "srtla-server" "slspanel" "wud")
-  local images=("alexanderwagnerdev/rtmp-server:latest" "alexanderwagnerdev/srtla-server:latest" "alexanderwagnerdev/slspanel:latest" "getwud/wud:latest")
-  local fallback_images=("ghcr.io/alexanderwagnerdev/rtmp-server:latest" "ghcr.io/alexanderwagnerdev/srtla-server:latest" "ghcr.io/alexanderwagnerdev/slspanel:latest" "ghcr.io/getwud/wud:latest")
+  local images=("alexanderwagnerdev/rtmp-server:beta" "alexanderwagnerdev/srtla-server:beta" "alexanderwagnerdev/slspanel:beta" "getwud/wud:latest")
+  local fallback_images=("ghcr.io/alexanderwagnerdev/rtmp-server:beta" "ghcr.io/alexanderwagnerdev/srtla-server:beta" "ghcr.io/alexanderwagnerdev/slspanel:beta" "ghcr.io/getwud/wud:latest")
   
   for i in "${!containers[@]}"; do
     recreate_container "${containers[$i]}" "${images[$i]}" "${fallback_images[$i]}"
@@ -632,18 +642,18 @@ if [[ "$mainaction" == "1" ]]; then
   install_rtmp=${install_rtmp:-n}
   if [[ "$install_rtmp" =~ ^[JjYy] ]]; then
     echo -e "$rtmp_install_msg"
-    docker_pull_fallback "alexanderwagnerdev/rtmp-server:latest" "ghcr.io/alexanderwagnerdev/rtmp-server:latest"
+    docker_pull_fallback "alexanderwagnerdev/rtmp-server:beta" "ghcr.io/alexanderwagnerdev/rtmp-server:beta"
     
     if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
       docker run -d --name rtmp-server --restart unless-stopped \
         --label "wud.watch=true" \
         --label "wud.watch.digest=true" \
         -p "${rtmp_stats_port}":80/tcp -p "${rtmp_port}":1935/tcp \
-        alexanderwagnerdev/rtmp-server:latest
+        alexanderwagnerdev/rtmp-server:beta
     else
       docker run -d --name rtmp-server --restart unless-stopped \
         -p "${rtmp_stats_port}":80/tcp -p "${rtmp_port}":1935/tcp \
-        alexanderwagnerdev/rtmp-server:latest
+        alexanderwagnerdev/rtmp-server:beta
     fi
     
     health_check rtmp-server
@@ -661,7 +671,7 @@ if [[ "$mainaction" == "1" ]]; then
     volume_data_path="/var/lib/docker/volumes/srtla-server/_data"
     sudo chown -R 3001:3001 "$volume_data_path"
     sudo chmod -R 755 "$volume_data_path"
-    docker_pull_fallback "alexanderwagnerdev/srtla-server:latest" "ghcr.io/alexanderwagnerdev/srtla-server:latest"
+    docker_pull_fallback "alexanderwagnerdev/srtla-server:beta" "ghcr.io/alexanderwagnerdev/srtla-server:beta"
     
     if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
       docker run -d --name srtla-server --restart unless-stopped \
@@ -669,12 +679,12 @@ if [[ "$mainaction" == "1" ]]; then
         --label "wud.watch.digest=true" \
         -v /var/lib/docker/volumes/srtla-server/_data:/var/lib/sls \
         -p "${srt_player_port}":4000/udp -p "${srt_sender_port}":4001/udp -p "${srtla_port}":5000/udp -p "${sls_stats_port}":8080/tcp \
-        alexanderwagnerdev/srtla-server:latest
+        alexanderwagnerdev/srtla-server:beta
     else
       docker run -d --name srtla-server --restart unless-stopped \
         -v /var/lib/docker/volumes/srtla-server/_data:/var/lib/sls \
         -p "${srt_player_port}":4000/udp -p "${srt_sender_port}":4001/udp -p "${srtla_port}":5000/udp -p "${sls_stats_port}":8080/tcp \
-        alexanderwagnerdev/srtla-server:latest
+        alexanderwagnerdev/srtla-server:beta
     fi
     
     health_check srtla-server
@@ -778,7 +788,7 @@ if [[ "$mainaction" == "1" ]]; then
           -e SRT_PLAYER_PORT=${srt_player_port} \
           -e SRTLA_PUBLISH_PORT=${srtla_port} \
           -e SLS_STATS_PORT=${sls_stats_port} \
-          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:latest
+          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:beta
       else
         docker run -d --name slspanel --restart unless-stopped \
           -e REQUIRE_LOGIN=True \
@@ -793,7 +803,7 @@ if [[ "$mainaction" == "1" ]]; then
           -e SRT_PLAYER_PORT=${srt_player_port} \
           -e SRTLA_PUBLISH_PORT=${srtla_port} \
           -e SLS_STATS_PORT=${sls_stats_port} \
-          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:latest
+          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:beta
       fi
     else
       if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
@@ -810,7 +820,7 @@ if [[ "$mainaction" == "1" ]]; then
           -e SRT_PLAYER_PORT=${srt_player_port} \
           -e SRTLA_PUBLISH_PORT=${srtla_port} \
           -e SLS_STATS_PORT=${sls_stats_port} \
-          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:latest
+          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:beta
       else
         docker run -d --name slspanel --restart unless-stopped \
           -e REQUIRE_LOGIN=False \
@@ -823,7 +833,7 @@ if [[ "$mainaction" == "1" ]]; then
           -e SRT_PLAYER_PORT=${srt_player_port} \
           -e SRTLA_PUBLISH_PORT=${srtla_port} \
           -e SLS_STATS_PORT=${sls_stats_port} \
-          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:latest
+          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:beta
       fi
     fi
 
