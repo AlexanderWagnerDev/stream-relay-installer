@@ -302,6 +302,7 @@ if [[ "$lang" == "de" ]]; then
   rtmp_prompt="RTMP-Server Docker Container installieren und starten? (j/n):"
   srtla_prompt="SRTLA-Server Docker Container installieren und starten? (j/n):"
   wud_prompt="WUD Container (automatische Updates) installieren und starten? (j/n):"
+  wud_labels_prompt="Sollen die Container (RTMP, SRTLA, SLSPanel) von WUD überwacht werden? (j/n):"
   ipv6_prompt="Docker IPv6 Unterstützung aktivieren? (j/n):"
   use_default_ports_prompt="Standardports verwenden? (j/n):"
   manual_ip_prompt="Möchtest du eine Domain oder IP manuell eingeben? (j/n):"
@@ -336,6 +337,7 @@ else
   rtmp_prompt="Install and start RTMP Server Docker container? (y/n):"
   srtla_prompt="Install and start SRTLA Server Docker container? (y/n):"
   wud_prompt="Install and start WUD container (automatic updates)? (y/n):"
+  wud_labels_prompt="Should the containers (RTMP, SRTLA, SLSPanel) be monitored by WUD? (y/n):"
   ipv6_prompt="Enable Docker IPv6 support? (y/n):"
   use_default_ports_prompt="Use default ports? (y/n):"
   manual_ip_prompt="Do you want to enter a domain or IP manually? (y/n):"
@@ -476,12 +478,33 @@ if [[ "$mainaction" == "1" ]]; then
 
   app_url="http://${public_ip}:${sls_stats_port}"
 
+  read -rp "$wud_prompt " install_wud
+  install_wud=${install_wud:-n}
+  
+  use_wud_labels="n"
+  if [[ "$install_wud" =~ ^[JjYy] ]]; then
+    read -rp "$wud_labels_prompt " use_wud_labels
+    use_wud_labels=${use_wud_labels:-n}
+  fi
+
   read -rp "$rtmp_prompt " install_rtmp
   install_rtmp=${install_rtmp:-n}
   if [[ "$install_rtmp" =~ ^[JjYy] ]]; then
     echo -e "$rtmp_install_msg"
     docker_pull_fallback "alexanderwagnerdev/rtmp-server:latest" "ghcr.io/alexanderwagnerdev/rtmp-server:latest"
-    docker run -d --name rtmp-server --restart unless-stopped -p "${rtmp_stats_port}":80/tcp -p "${rtmp_port}":1935/tcp alexanderwagnerdev/rtmp-server:latest
+    
+    if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
+      docker run -d --name rtmp-server --restart unless-stopped \
+        --label "wud.watch=true" \
+        --label "wud.watch.digest=true" \
+        -p "${rtmp_stats_port}":80/tcp -p "${rtmp_port}":1935/tcp \
+        alexanderwagnerdev/rtmp-server:latest
+    else
+      docker run -d --name rtmp-server --restart unless-stopped \
+        -p "${rtmp_stats_port}":80/tcp -p "${rtmp_port}":1935/tcp \
+        alexanderwagnerdev/rtmp-server:latest
+    fi
+    
     health_check rtmp-server
   else
     echo -e "$rtmp_skip_msg"
@@ -498,9 +521,21 @@ if [[ "$mainaction" == "1" ]]; then
     sudo chown -R 3001:3001 "$volume_data_path"
     sudo chmod -R 755 "$volume_data_path"
     docker_pull_fallback "alexanderwagnerdev/srtla-server:latest" "ghcr.io/alexanderwagnerdev/srtla-server:latest"
-    docker run -d --name srtla-server --restart unless-stopped -v /var/lib/docker/volumes/srtla-server/_data:/var/lib/sls \
-      -p "${srt_player_port}":4000/udp -p "${srt_sender_port}":4001/udp -p "${srtla_port}":5000/udp -p "${sls_stats_port}":8080/tcp \
-      alexanderwagnerdev/srtla-server:latest
+    
+    if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
+      docker run -d --name srtla-server --restart unless-stopped \
+        --label "wud.watch=true" \
+        --label "wud.watch.digest=true" \
+        -v /var/lib/docker/volumes/srtla-server/_data:/var/lib/sls \
+        -p "${srt_player_port}":4000/udp -p "${srt_sender_port}":4001/udp -p "${srtla_port}":5000/udp -p "${sls_stats_port}":8080/tcp \
+        alexanderwagnerdev/srtla-server:latest
+    else
+      docker run -d --name srtla-server --restart unless-stopped \
+        -v /var/lib/docker/volumes/srtla-server/_data:/var/lib/sls \
+        -p "${srt_player_port}":4000/udp -p "${srt_sender_port}":4001/udp -p "${srtla_port}":5000/udp -p "${sls_stats_port}":8080/tcp \
+        alexanderwagnerdev/srtla-server:latest
+    fi
+    
     health_check srtla-server
 
     if [ ! -f ".apikey" ]; then
@@ -541,8 +576,6 @@ if [[ "$mainaction" == "1" ]]; then
     echo -e "$srtla_skip_msg"
   fi
 
-  read -rp "$wud_prompt " install_wud
-  install_wud=${install_wud:-n}
   if [[ "$install_wud" =~ ^[JjYy] ]]; then
     echo -e "$wud_install_msg"
     docker_pull_fallback "getwud/wud:latest" "ghcr.io/getwud/wud:latest"
@@ -588,33 +621,69 @@ if [[ "$mainaction" == "1" ]]; then
     TZ=$(cat /etc/timezone 2>/dev/null || echo UTC)
 
     if [[ "$enable_login" =~ ^[JjYy] ]]; then
-      docker run -d --name slspanel --restart unless-stopped \
-        -e REQUIRE_LOGIN=True \
-        -e WEB_USERNAME="${slspanel_username}" \
-        -e WEB_PASSWORD="${slspanel_password}" \
-        -e SLS_API_URL="${slspanel_api_url}" \
-        -e SLS_API_KEY="${apikey}" \
-        -e SLS_DOMAIN_IP="${public_ip}" \
-        -e LANG="${lang}" \
-        -e TZ="${TZ}" \
-        -e SRT_PUBLISH_PORT=${srt_sender_port} \
-        -e SRT_PLAYER_PORT=${srt_player_port} \
-        -e SRTLA_PUBLISH_PORT=${srtla_port} \
-        -e SLS_STATS_PORT=${sls_stats_port} \
-        -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:latest
+      if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
+        docker run -d --name slspanel --restart unless-stopped \
+          --label "wud.watch=true" \
+          --label "wud.watch.digest=true" \
+          -e REQUIRE_LOGIN=True \
+          -e WEB_USERNAME="${slspanel_username}" \
+          -e WEB_PASSWORD="${slspanel_password}" \
+          -e SLS_API_URL="${slspanel_api_url}" \
+          -e SLS_API_KEY="${apikey}" \
+          -e SLS_DOMAIN_IP="${public_ip}" \
+          -e LANG="${lang}" \
+          -e TZ="${TZ}" \
+          -e SRT_PUBLISH_PORT=${srt_sender_port} \
+          -e SRT_PLAYER_PORT=${srt_player_port} \
+          -e SRTLA_PUBLISH_PORT=${srtla_port} \
+          -e SLS_STATS_PORT=${sls_stats_port} \
+          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:latest
+      else
+        docker run -d --name slspanel --restart unless-stopped \
+          -e REQUIRE_LOGIN=True \
+          -e WEB_USERNAME="${slspanel_username}" \
+          -e WEB_PASSWORD="${slspanel_password}" \
+          -e SLS_API_URL="${slspanel_api_url}" \
+          -e SLS_API_KEY="${apikey}" \
+          -e SLS_DOMAIN_IP="${public_ip}" \
+          -e LANG="${lang}" \
+          -e TZ="${TZ}" \
+          -e SRT_PUBLISH_PORT=${srt_sender_port} \
+          -e SRT_PLAYER_PORT=${srt_player_port} \
+          -e SRTLA_PUBLISH_PORT=${srtla_port} \
+          -e SLS_STATS_PORT=${sls_stats_port} \
+          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:latest
+      fi
     else
-      docker run -d --name slspanel --restart unless-stopped \
-        -e REQUIRE_LOGIN=False \
-        -e SLS_API_URL="${slspanel_api_url}" \
-        -e SLS_API_KEY="${apikey}" \
-        -e SLS_DOMAIN_IP="${public_ip}" \
-        -e LANG="${lang}" \
-        -e TZ="${TZ}" \
-        -e SRT_PUBLISH_PORT=${srt_sender_port} \
-        -e SRT_PLAYER_PORT=${srt_player_port} \
-        -e SRTLA_PUBLISH_PORT=${srtla_port} \
-        -e SLS_STATS_PORT=${sls_stats_port} \
-        -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:latest
+      if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
+        docker run -d --name slspanel --restart unless-stopped \
+          --label "wud.watch=true" \
+          --label "wud.watch.digest=true" \
+          -e REQUIRE_LOGIN=False \
+          -e SLS_API_URL="${slspanel_api_url}" \
+          -e SLS_API_KEY="${apikey}" \
+          -e SLS_DOMAIN_IP="${public_ip}" \
+          -e LANG="${lang}" \
+          -e TZ="${TZ}" \
+          -e SRT_PUBLISH_PORT=${srt_sender_port} \
+          -e SRT_PLAYER_PORT=${srt_player_port} \
+          -e SRTLA_PUBLISH_PORT=${srtla_port} \
+          -e SLS_STATS_PORT=${sls_stats_port} \
+          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:latest
+      else
+        docker run -d --name slspanel --restart unless-stopped \
+          -e REQUIRE_LOGIN=False \
+          -e SLS_API_URL="${slspanel_api_url}" \
+          -e SLS_API_KEY="${apikey}" \
+          -e SLS_DOMAIN_IP="${public_ip}" \
+          -e LANG="${lang}" \
+          -e TZ="${TZ}" \
+          -e SRT_PUBLISH_PORT=${srt_sender_port} \
+          -e SRT_PLAYER_PORT=${srt_player_port} \
+          -e SRTLA_PUBLISH_PORT=${srtla_port} \
+          -e SLS_STATS_PORT=${sls_stats_port} \
+          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:latest
+      fi
     fi
 
     health_check slspanel
