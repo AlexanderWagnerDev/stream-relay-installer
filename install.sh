@@ -327,6 +327,14 @@ function recreate_container() {
   
   docker stop "$cname" 2>/dev/null
   docker rm "$cname" 2>/dev/null
+
+  [[ "$lang" == "de" ]] && echo -e "${INFO}Entferne alte Images...${NC}" || echo -e "${INFO}Removing old images...${NC}"
+  docker rmi -f "$image" 2>/dev/null || true
+  docker rmi -f "$fallback_image" 2>/dev/null || true
+  local image_base=$(echo "$image" | cut -d':' -f1)
+  docker images --format "{{.Repository}}:{{.Tag}}" | grep "^${image_base}:" | xargs -r docker rmi -f 2>/dev/null || true
+  local fallback_base=$(echo "$fallback_image" | cut -d':' -f1)
+  docker images --format "{{.Repository}}:{{.Tag}}" | grep "^${fallback_base}:" | xargs -r docker rmi -f 2>/dev/null || true
   
   docker_pull_fallback "$image" "$fallback_image"
   
