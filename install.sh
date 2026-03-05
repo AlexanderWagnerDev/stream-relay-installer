@@ -328,11 +328,9 @@ function recreate_container() {
   docker stop "$cname" 2>/dev/null
   docker rm "$cname" 2>/dev/null
   
-  # Remove old images with all possible tags to ensure fresh pull
   [[ "$lang" == "de" ]] && echo -e "${INFO}Entferne alte Images...${NC}" || echo -e "${INFO}Removing old images...${NC}"
   docker rmi -f "$image" 2>/dev/null || true
   docker rmi -f "$fallback_image" 2>/dev/null || true
-  # Also remove images with other tags (latest, beta, etc.) from the same repository
   local image_base=$(echo "$image" | cut -d':' -f1)
   docker images --format "{{.Repository}}:{{.Tag}}" | grep "^${image_base}:" | xargs -r docker rmi -f 2>/dev/null || true
   local fallback_base=$(echo "$fallback_image" | cut -d':' -f1)
