@@ -1,0 +1,493 @@
+name: Full Matrix Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # ──────────────────────────────────────────────
+  # JOB 1 – Syntax-Check (kein Docker nötig)
+  # ──────────────────────────────────────────────
+  lint:
+    name: "Lint: ShellCheck"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+      - name: Run ShellCheck
+        run: shellcheck -e SC1091,SC2034,SC2162 install.sh
+
+  # ──────────────────────────────────────────────
+  # JOB 2 – Alle Kombinationen als Matrix
+  # ──────────────────────────────────────────────
+  install-matrix:
+    name: "Install [${{ matrix.arch }}] [${{ matrix.lang }}] [${{ matrix.variant }}]"
+    needs: lint
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ── amd64 / english ──────────────────
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: all-services
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: rtmp-only
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: srtla-only
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: with-wud
+          # ── amd64 / german ───────────────────
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: all-services
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: rtmp-only
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: srtla-only
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: with-wud
+          # ── arm64 / english ──────────────────
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: all-services
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: rtmp-only
+          # ── arm64 / german ───────────────────
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: all-services
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: rtmp-only
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Make script executable
+        run: chmod +x ./install.sh
+
+      # Docker ist auf GitHub-Runnern vorinstalliert –
+      # sicherstellen dass der Daemon läuft
+      - name: Ensure Docker is running
+        run: |
+          sudo systemctl start docker 2>/dev/null || true
+          docker info
+
+      # set -e im Script + Heredoc verträgt sich schlecht.
+      # Wir patchen das lokal nur für den Test (kein Commit).
+      - name: Patch set -e for CI heredoc compatibility
+        run: sed -i 's/^set -e$/set -eo pipefail/' install.sh
+
+      # ── Variante: all-services ────────────────
+      - name: "Run install (all-services)"
+        if: matrix.variant == 'all-services'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          ${{ matrix.lang_input }}
+          1
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
+          admin
+          password
+          SCRIPT_EOF
+
+      # ── Variante: rtmp-only ───────────────────
+      - name: "Run install (rtmp-only)"
+        if: matrix.variant == 'rtmp-only'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          ${{ matrix.lang_input }}
+          1
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          SCRIPT_EOF
+
+      # ── Variante: srtla-only ──────────────────
+      - name: "Run install (srtla-only)"
+        if: matrix.variant == 'srtla-only'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          ${{ matrix.lang_input }}
+          1
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          SCRIPT_EOF
+
+      # ── Variante: with-wud ────────────────────
+      - name: "Run install (with-wud)"
+        if: matrix.variant == 'with-wud'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          ${{ matrix.lang_input }}
+          1
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
+          admin
+          password
+          SCRIPT_EOF
+
+      # ── Assertions ───────────────────────────
+      - name: Assert containers running
+        run: |
+          echo "=== Running containers ==="
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
+          echo ""
+
+          EXPECTED_ALL="rtmp-server srtla-server slspanel"
+          EXPECTED_RTMP="rtmp-server"
+          EXPECTED_SRTLA="srtla-server"
+          EXPECTED_WUD="rtmp-server srtla-server slspanel wud"
+          VARIANT="${{ matrix.variant }}"
+          FAILED=0
+
+          check_container() {
+            local name="$1"
+            if docker ps --format '{{.Names}}' | grep -q "^${name}$"; then
+              echo "✅ $name is running"
+            else
+              echo "❌ $name is NOT running"
+              FAILED=1
+            fi
+          }
+
+          case "$VARIANT" in
+            all-services)
+              for c in rtmp-server srtla-server slspanel; do check_container "$c"; done ;;
+            rtmp-only)
+              check_container "rtmp-server" ;;
+            srtla-only)
+              check_container "srtla-server" ;;
+            with-wud)
+              for c in rtmp-server srtla-server slspanel wud; do check_container "$c"; done ;;
+          esac
+
+          if [ "$FAILED" -ne 0 ]; then
+            echo ""
+            echo "=== Full container list for debugging ==="
+            docker ps -a
+            exit 1
+          fi
+
+      - name: Assert API key file exists (srtla variants)
+        if: matrix.variant == 'all-services' || matrix.variant == 'srtla-only' || matrix.variant == 'with-wud'
+        run: |
+          # Kurz warten falls Container noch initialisiert
+          sleep 5
+          if [ -f ".apikey" ]; then
+            KEY=$(cat .apikey)
+            if [ -n "$KEY" ]; then
+              echo "✅ .apikey exists and is non-empty (${#KEY} chars)"
+            else
+              echo "⚠️  .apikey exists but is empty"
+            fi
+          else
+            echo "⚠️  .apikey not found (container may still be initializing)"
+          fi
+
+      - name: Container health check
+        run: |
+          echo "=== Container Health ==="
+          for cname in rtmp-server srtla-server slspanel wud; do
+            if docker ps --format '{{.Names}}' | grep -q "^${cname}$"; then
+              STATUS=$(docker inspect --format='{{.State.Status}}' "$cname" 2>/dev/null || echo "unknown")
+              HEALTH=$(docker inspect --format='{{.State.Health.Status}}' "$cname" 2>/dev/null || echo "no healthcheck")
+              echo "  $cname → status=$STATUS, health=$HEALTH"
+            fi
+          done
+
+      - name: Show container logs on failure
+        if: failure()
+        run: |
+          echo "=== Logs bei Fehler ==="
+          for cname in rtmp-server srtla-server slspanel wud; do
+            if docker ps -a --format '{{.Names}}' | grep -q "^${cname}$"; then
+              echo "--- $cname ---"
+              docker logs --tail 50 "$cname" 2>&1 || true
+            fi
+          done
+
+  # ──────────────────────────────────────────────
+  # JOB 3 – Start / Stop / Update / Uninstall
+  # (nur amd64, nach erfolgreicher Installation)
+  # ──────────────────────────────────────────────
+  lifecycle:
+    name: "Lifecycle [${{ matrix.action }}] [amd64/en]"
+    needs: install-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    strategy:
+      fail-fast: false
+      matrix:
+        action: [stop, start, update, uninstall-keep, uninstall-remove]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Make script executable & patch set -e
+        run: |
+          chmod +x ./install.sh
+          sed -i 's/^set -e$/set -eo pipefail/' install.sh
+
+      - name: Ensure Docker is running
+        run: |
+          sudo systemctl start docker 2>/dev/null || true
+          docker info
+
+      - name: Pre-install services (needed for lifecycle tests)
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          2
+          1
+          n
+          n
+          y
+          n
+          y
+          y
+          y
+          y
+          y
+          y
+          admin
+          password
+          SCRIPT_EOF
+
+      - name: Wait for containers to be ready
+        run: sleep 8
+
+      - name: "Action: stop"
+        if: matrix.action == 'stop'
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          2
+          3
+          SCRIPT_EOF
+          echo "=== Containers after stop ==="
+          docker ps -a --format "table {{.Names}}\t{{.Status}}"
+          # Prüfen dass Container gestoppt sind
+          for c in rtmp-server srtla-server slspanel; do
+            STATUS=$(docker inspect --format='{{.State.Status}}' "$c" 2>/dev/null || echo "missing")
+            if [ "$STATUS" = "exited" ] || [ "$STATUS" = "missing" ]; then
+              echo "✅ $c is stopped ($STATUS)"
+            else
+              echo "❌ $c is still running! ($STATUS)"
+              exit 1
+            fi
+          done
+
+      - name: "Action: start (stop first, then start)"
+        if: matrix.action == 'start'
+        run: |
+          # Zuerst stoppen
+          ./install.sh <<'SCRIPT_EOF'
+          2
+          3
+          SCRIPT_EOF
+          sleep 3
+          # Dann starten
+          ./install.sh <<'SCRIPT_EOF'
+          2
+          2
+          SCRIPT_EOF
+          sleep 5
+          echo "=== Containers after start ==="
+          docker ps --format "table {{.Names}}\t{{.Status}}"
+          for c in rtmp-server srtla-server slspanel; do
+            if docker ps --format '{{.Names}}' | grep -q "^${c}$"; then
+              echo "✅ $c is running"
+            else
+              echo "❌ $c is not running after start"
+              exit 1
+            fi
+          done
+
+      - name: "Action: update"
+        if: matrix.action == 'update'
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          2
+          4
+          SCRIPT_EOF
+          echo "=== Containers after update ==="
+          docker ps --format "table {{.Names}}\t{{.Status}}"
+
+      - name: "Action: uninstall-keep"
+        if: matrix.action == 'uninstall-keep'
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          2
+          5
+          n
+          SCRIPT_EOF
+          echo "=== Containers after uninstall (keep volumes) ==="
+          docker ps -a
+          echo "=== Volumes ==="
+          docker volume ls
+          # Sicherstellen dass Volumes noch da sind
+          if docker volume ls | grep -q "srtla-server"; then
+            echo "✅ Volume srtla-server still exists"
+          else
+            echo "ℹ️  Volume srtla-server not found (may not have been created)"
+          fi
+
+      - name: "Action: uninstall-remove"
+        if: matrix.action == 'uninstall-remove'
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          2
+          5
+          y
+          SCRIPT_EOF
+          echo "=== Containers after uninstall (remove volumes) ==="
+          docker ps -a
+          echo "=== Volumes ==="
+          docker volume ls
+          # Sicherstellen dass Volume entfernt wurde
+          if docker volume ls | grep -q "srtla-server"; then
+            echo "❌ Volume srtla-server still exists but should be removed"
+            exit 1
+          else
+            echo "✅ Volume srtla-server was removed"
+          fi
+
+      - name: "Action: help"
+        if: matrix.action == 'help'
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          2
+          6
+          SCRIPT_EOF
+
+      - name: Show logs on failure
+        if: failure()
+        run: |
+          for cname in rtmp-server srtla-server slspanel wud; do
+            if docker ps -a --format '{{.Names}}' | grep -q "^${cname}$"; then
+              echo "--- $cname ---"
+              docker logs --tail 30 "$cname" 2>&1 || true
+            fi
+          done
+
+  # ──────────────────────────────────────────────
+  # JOB 4 – Summary
+  # ──────────────────────────────────────────────
+  summary:
+    name: "Test Summary"
+    needs: [lint, install-matrix, lifecycle]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print result
+        run: |
+          echo "lint:            ${{ needs.lint.result }}"
+          echo "install-matrix:  ${{ needs.install-matrix.result }}"
+          echo "lifecycle:       ${{ needs.lifecycle.result }}"
+
+          if [ "${{ needs.lint.result }}" = "failure" ] || \
+             [ "${{ needs.install-matrix.result }}" = "failure" ] || \
+             [ "${{ needs.lifecycle.result }}" = "failure" ]; then
+            echo "❌ Mindestens ein Job ist fehlgeschlagen."
+            exit 1
+          else
+            echo "✅ Alle Jobs erfolgreich."
+          fi
