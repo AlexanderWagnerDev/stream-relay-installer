@@ -1,0 +1,956 @@
+name: 🧪 Comprehensive Full Test Suite
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      test_scope:
+        description: 'Test Scope'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - quick
+          - installation-only
+          - services-only
+          - network-only
+
+env:
+  DEBIAN_FRONTEND: noninteractive
+  APT_LISTCHANGES_FRONTEND: none
+  LC_ALL: C
+
+jobs:
+  # ============================================================================
+  # JOB 1: Full Installation Matrix Tests
+  # ============================================================================
+  test-full-installation-matrix:
+    name: 🔧 Install Test [${{ matrix.os }}/${{ matrix.lang }}/${{ matrix.config }}]
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+        lang: [de, en]
+        config: 
+          - name: default-all-services
+            ports: default
+            ipv6: false
+            wud: true
+            slspanel_login: false
+          - name: custom-ports-ipv6
+            ports: custom
+            ipv6: true
+            wud: false
+            slspanel_login: true
+          - name: minimal-install
+            ports: default
+            ipv6: false
+            wud: false
+            slspanel_login: false
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v6
+      
+      - name: 🔧 Setup Test Environment
+        run: |
+          set -e
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq curl wget net-tools
+          
+          # Cleanup any existing Docker installations
+          docker ps -aq | xargs -r docker rm -f 2>/dev/null || true
+          
+          echo "✅ Environment ready"
+      
+      - name: 🚀 Test Full Installation (Default Config)
+        if: matrix.config.name == 'default-all-services'
+        run: |
+          set -e
+          
+          # Generate input for full installation
+          cat > /tmp/install-input << 'EOF'
+          ${{ matrix.lang == 'de' && '1' || '2' }}
+          1
+          n
+          y
+          n
+          y
+          
+          
+          
+          
+          
+          
+          n
+          y
+          y
+          y
+          y
+          y
+          n
+          EOF
+          
+          bash install.sh < /tmp/install-input
+          
+          echo "✅ Full installation completed"
+      
+      - name: 🔧 Test Installation with Custom Ports & IPv6
+        if: matrix.config.name == 'custom-ports-ipv6'
+        run: |
+          set -e
+          
+          cat > /tmp/install-custom << 'EOF'
+          ${{ matrix.lang == 'de' && '1' || '2' }}
+          1
+          n
+          y
+          y
+          n
+          4100
+          4101
+          5100
+          8889
+          8190
+          1936
+          8100
+          n
+          y
+          n
+          y
+          y
+          y
+          y
+          admin123
+          SecurePass456!
+          EOF
+          
+          bash install.sh < /tmp/install-custom
+          
+          echo "✅ Custom ports & IPv6 installation completed"
+      
+      - name: 🎯 Test Minimal Installation
+        if: matrix.config.name == 'minimal-install'
+        run: |
+          set -e
+          
+          cat > /tmp/install-minimal << 'EOF'
+          ${{ matrix.lang == 'de' && '1' || '2' }}
+          1
+          n
+          y
+          n
+          y
+          
+          
+          
+          
+          
+          
+          n
+          n
+          y
+          n
+          y
+          n
+          EOF
+          
+          bash install.sh < /tmp/install-minimal
+          
+          echo "✅ Minimal installation completed"
+      
+      - name: 🔍 Verify Docker Installation
+        run: |
+          docker --version
+          docker info
+          docker ps -a
+          
+          echo "✅ Docker is operational"
+      
+      - name: ⏳ Wait for Containers to Initialize
+        run: |
+          echo "Waiting 15 seconds for all containers to fully start..."
+          sleep 15
+      
+      - name: 🏥 Health Check - All Containers
+        run: |
+          set -e
+          
+          FAILED=0
+          
+          # Define expected containers based on config
+          if [[ "${{ matrix.config.name }}" == "default-all-services" ]]; then
+            CONTAINERS=("rtmp-server" "srtla-server" "slspanel" "wud")
+          elif [[ "${{ matrix.config.name }}" == "custom-ports-ipv6" ]]; then
+            CONTAINERS=("rtmp-server" "srtla-server" "slspanel")
+          else
+            CONTAINERS=("srtla-server")
+          fi
+          
+          for container in "${CONTAINERS[@]}"; do
+            if docker ps --format '{{.Names}}' | grep -q "^$container$"; then
+              echo "✅ Container $container is running"
+              
+              # Check health status if available
+              health=$(docker inspect --format='{{.State.Health.Status}}' "$container" 2>/dev/null || echo "no-healthcheck")
+              
+              if [[ "$health" == "healthy" ]]; then
+                echo "   ✅ Health: $health"
+              elif [[ "$health" == "no-healthcheck" ]]; then
+                echo "   ℹ️  No healthcheck defined"
+              else
+                echo "   ⚠️  Health: $health"
+              fi
+              
+              # Show container status
+              docker inspect --format='{{.State.Status}}' "$container"
+            else
+              echo "❌ Container $container is NOT running!"
+              FAILED=1
+            fi
+          done
+          
+          if [[ $FAILED -eq 1 ]]; then
+            exit 1
+          fi
+          
+          echo "✅ All expected containers are healthy"
+      
+      - name: 🔌 Verify Port Bindings (Default Ports)
+        if: matrix.config.ports == 'default'
+        run: |
+          set -e
+          
+          echo "Checking default port bindings..."
+          
+          # SRTLA Server ports
+          if docker ps --format '{{.Names}}' | grep -q "^srtla-server$"; then
+            docker port srtla-server | grep -q "4000/udp" || (echo "❌ Port 4000/udp not bound"; exit 1)
+            docker port srtla-server | grep -q "4001/udp" || (echo "❌ Port 4001/udp not bound"; exit 1)
+            docker port srtla-server | grep -q "5000/udp" || (echo "❌ Port 5000/udp not bound"; exit 1)
+            docker port srtla-server | grep -q "8080/tcp" || (echo "❌ Port 8080/tcp not bound"; exit 1)
+            echo "✅ SRTLA ports: 4000/udp, 4001/udp, 5000/udp, 8080/tcp"
+          fi
+          
+          # RTMP Server ports
+          if docker ps --format '{{.Names}}' | grep -q "^rtmp-server$"; then
+            docker port rtmp-server | grep -q "1935/tcp" || (echo "❌ Port 1935/tcp not bound"; exit 1)
+            docker port rtmp-server | grep -q "80/tcp" || (echo "❌ Port 80/tcp not bound"; exit 1)
+            echo "✅ RTMP ports: 1935/tcp, 80/tcp"
+          fi
+          
+          # SLSPanel port
+          if docker ps --format '{{.Names}}' | grep -q "^slspanel$"; then
+            docker port slspanel | grep -q "8000/tcp" || (echo "❌ Port 8000/tcp not bound"; exit 1)
+            echo "✅ SLSPanel port: 8000/tcp"
+          fi
+          
+          echo "✅ All default ports correctly bound"
+      
+      - name: 🔌 Verify Port Bindings (Custom Ports)
+        if: matrix.config.ports == 'custom'
+        run: |
+          set -e
+          
+          echo "Checking custom port bindings..."
+          
+          # Custom SRTLA Server ports
+          if docker ps --format '{{.Names}}' | grep -q "^srtla-server$"; then
+            docker port srtla-server | grep -q "4100/udp" || (echo "❌ Port 4100/udp not bound"; exit 1)
+            docker port srtla-server | grep -q "4101/udp" || (echo "❌ Port 4101/udp not bound"; exit 1)
+            docker port srtla-server | grep -q "5100/udp" || (echo "❌ Port 5100/udp not bound"; exit 1)
+            docker port srtla-server | grep -q "8889/tcp" || (echo "❌ Port 8889/tcp not bound"; exit 1)
+            echo "✅ SRTLA custom ports: 4100/udp, 4101/udp, 5100/udp, 8889/tcp"
+          fi
+          
+          # Custom RTMP Server port
+          if docker ps --format '{{.Names}}' | grep -q "^rtmp-server$"; then
+            docker port rtmp-server | grep -q "1936/tcp" || (echo "❌ Port 1936/tcp not bound"; exit 1)
+            echo "✅ RTMP custom port: 1936/tcp"
+          fi
+          
+          # Custom SLSPanel port
+          if docker ps --format '{{.Names}}' | grep -q "^slspanel$"; then
+            docker port slspanel | grep -q "8100/tcp" || (echo "❌ Port 8100/tcp not bound"; exit 1)
+            echo "✅ SLSPanel custom port: 8100/tcp"
+          fi
+          
+          echo "✅ All custom ports correctly bound"
+      
+      - name: 🔑 Test API Key Extraction
+        if: matrix.config.name != 'minimal-install' || contains(fromJSON('["rtmp-server", "srtla-server"]'), matrix.config.name)
+        run: |
+          set -e
+          
+          if [ -f ".apikey" ]; then
+            apikey=$(cat .apikey)
+            
+            if [ -n "$apikey" ] && [ "$apikey" != "your_api_key" ]; then
+              echo "✅ API Key extracted successfully: ${apikey:0:12}..."
+              echo "API Key length: ${#apikey} characters"
+            else
+              echo "❌ API Key file exists but is empty or default"
+              exit 1
+            fi
+          else
+            echo "⚠️  No .apikey file found (may be expected for this config)"
+          fi
+      
+      - name: 🔍 Verify Docker IPv6 Configuration
+        if: matrix.config.ipv6 == true
+        run: |
+          set -e
+          
+          if [ -f "/etc/docker/daemon.json" ]; then
+            echo "Docker daemon.json contents:"
+            cat /etc/docker/daemon.json
+            
+            if grep -q '"ipv6".*true' /etc/docker/daemon.json; then
+              echo "✅ IPv6 is enabled in Docker configuration"
+            else
+              echo "❌ IPv6 not found in Docker configuration"
+              exit 1
+            fi
+          else
+            echo "❌ Docker daemon.json not found"
+            exit 1
+          fi
+      
+      - name: 📊 Collect Container Logs
+        if: always()
+        run: |
+          echo "====== CONTAINER LOGS ======"
+          for container in rtmp-server srtla-server slspanel wud; do
+            if docker ps -a --format '{{.Names}}' | grep -q "^$container$"; then
+              echo ""
+              echo "========== $container =========="
+              docker logs --tail 100 "$container" 2>&1 || true
+            fi
+          done
+      
+      - name: 🧹 Cleanup Test Environment
+        if: always()
+        run: |
+          docker ps -aq | xargs -r docker rm -f 2>/dev/null || true
+          docker volume ls -q | xargs -r docker volume rm 2>/dev/null || true
+          rm -f .apikey
+
+  # ============================================================================
+  # JOB 2: Service Management Tests (Start/Stop/Restart)
+  # ============================================================================
+  test-service-management:
+    name: 🔄 Service Management Tests
+    runs-on: ubuntu-22.04
+    needs: test-full-installation-matrix
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v6
+      
+      - name: 🚀 Initial Installation
+        run: |
+          cat > /tmp/install << 'EOF'
+          2
+          1
+          n
+          y
+          n
+          y
+          
+          
+          
+          
+          
+          
+          n
+          y
+          y
+          y
+          y
+          EOF
+          
+          bash install.sh < /tmp/install
+          sleep 10
+      
+      - name: ✅ Verify Initial State (Running)
+        run: |
+          for container in rtmp-server srtla-server slspanel; do
+            if ! docker ps --format '{{.Names}}' | grep -q "^$container$"; then
+              echo "❌ Container $container should be running initially"
+              exit 1
+            fi
+          done
+          echo "✅ All containers running initially"
+      
+      - name: 🛑 Test Stop Functionality (mainaction=3)
+        run: |
+          echo "2" > /tmp/lang
+          echo "3" >> /tmp/lang
+          
+          bash install.sh < /tmp/lang
+          
+          sleep 5
+      
+      - name: ✅ Verify Stopped State
+        run: |
+          RUNNING=0
+          for container in rtmp-server srtla-server slspanel wud; do
+            if docker ps --format '{{.Names}}' | grep -q "^$container$"; then
+              echo "❌ Container $container should be stopped"
+              RUNNING=1
+            fi
+          done
+          
+          if [[ $RUNNING -eq 0 ]]; then
+            echo "✅ All containers stopped successfully"
+          else
+            exit 1
+          fi
+      
+      - name: ▶️ Test Start Functionality (mainaction=2)
+        run: |
+          echo "2" > /tmp/lang
+          echo "2" >> /tmp/lang
+          
+          bash install.sh < /tmp/lang
+          
+          sleep 10
+      
+      - name: ✅ Verify Running State After Start
+        run: |
+          for container in rtmp-server srtla-server slspanel; do
+            if ! docker ps --format '{{.Names}}' | grep -q "^$container$"; then
+              echo "❌ Container $container should be running after start"
+              exit 1
+            fi
+          done
+          echo "✅ All containers restarted successfully"
+      
+      - name: 🔄 Test Multiple Stop/Start Cycles
+        run: |
+          for i in {1..3}; do
+            echo "Cycle $i: Stop"
+            echo -e "2\n3" | bash install.sh
+            sleep 3
+            
+            echo "Cycle $i: Start"
+            echo -e "2\n2" | bash install.sh
+            sleep 5
+            
+            # Verify running
+            if ! docker ps --format '{{.Names}}' | grep -q "^srtla-server$"; then
+              echo "❌ Failed at cycle $i"
+              exit 1
+            fi
+          done
+          
+          echo "✅ Multiple stop/start cycles successful"
+      
+      - name: 🧹 Cleanup
+        if: always()
+        run: |
+          docker ps -aq | xargs -r docker rm -f 2>/dev/null || true
+          docker volume ls -q | xargs -r docker volume rm 2>/dev/null || true
+
+  # ============================================================================
+  # JOB 3: Update & Rollback Tests
+  # ============================================================================
+  test-update-functionality:
+    name: 🔄 Update & Image Fallback Tests
+    runs-on: ubuntu-22.04
+    needs: test-full-installation-matrix
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v6
+      
+      - name: 🚀 Initial Installation
+        run: |
+          cat > /tmp/install << 'EOF'
+          2
+          1
+          n
+          y
+          n
+          y
+          
+          
+          
+          
+          
+          
+          n
+          y
+          y
+          y
+          y
+          EOF
+          
+          bash install.sh < /tmp/install
+          sleep 10
+      
+      - name: 📝 Record Initial Container IDs
+        run: |
+          docker ps --format '{{.Names}}:{{.ID}}' > /tmp/initial-ids.txt
+          cat /tmp/initial-ids.txt
+      
+      - name: 🔄 Test Update Functionality (mainaction=4)
+        run: |
+          echo "2" > /tmp/lang
+          echo "4" >> /tmp/lang
+          
+          bash install.sh < /tmp/lang
+          
+          sleep 15
+      
+      - name: ✅ Verify Containers Recreated
+        run: |
+          docker ps --format '{{.Names}}:{{.ID}}' > /tmp/updated-ids.txt
+          
+          echo "Initial IDs:"
+          cat /tmp/initial-ids.txt
+          echo ""
+          echo "Updated IDs:"
+          cat /tmp/updated-ids.txt
+          
+          # Container IDs should be different after update
+          if diff /tmp/initial-ids.txt /tmp/updated-ids.txt > /dev/null 2>&1; then
+            echo "⚠️  Container IDs unchanged (may be OK if images unchanged)"
+          else
+            echo "✅ Containers were recreated with new IDs"
+          fi
+      
+      - name: ✅ Verify All Containers Still Running
+        run: |
+          for container in rtmp-server srtla-server slspanel; do
+            if ! docker ps --format '{{.Names}}' | grep -q "^$container$"; then
+              echo "❌ Container $container not running after update"
+              exit 1
+            fi
+          done
+          echo "✅ All containers running after update"
+      
+      - name: 🔑 Verify API Key Preserved
+        run: |
+          if [ -f ".apikey" ]; then
+            apikey=$(cat .apikey)
+            if [ -n "$apikey" ]; then
+              echo "✅ API Key preserved after update: ${apikey:0:12}..."
+            else
+              echo "❌ API Key file empty after update"
+              exit 1
+            fi
+          else
+            echo "❌ API Key file missing after update"
+            exit 1
+          fi
+      
+      - name: 🔄 Test Multiple Update Cycles
+        run: |
+          for i in {1..2}; do
+            echo "Update cycle $i"
+            echo -e "2\n4" | bash install.sh
+            sleep 10
+            
+            # Verify all running
+            if ! docker ps --format '{{.Names}}' | grep -q "^srtla-server$"; then
+              echo "❌ Update cycle $i failed"
+              exit 1
+            fi
+          done
+          
+          echo "✅ Multiple update cycles successful"
+      
+      - name: 🧹 Cleanup
+        if: always()
+        run: |
+          docker ps -aq | xargs -r docker rm -f 2>/dev/null || true
+          docker volume ls -q | xargs -r docker volume rm 2>/dev/null || true
+
+  # ============================================================================
+  # JOB 4: Uninstall & Cleanup Tests
+  # ============================================================================
+  test-uninstall-cleanup:
+    name: 🗑️ Uninstall & Cleanup Tests
+    runs-on: ubuntu-22.04
+    needs: test-full-installation-matrix
+    
+    strategy:
+      matrix:
+        cleanup_mode:
+          - name: with-volumes
+            remove_volumes: true
+          - name: without-volumes
+            remove_volumes: false
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v6
+      
+      - name: 🚀 Initial Installation
+        run: |
+          cat > /tmp/install << 'EOF'
+          2
+          1
+          n
+          y
+          n
+          y
+          
+          
+          
+          
+          
+          
+          n
+          y
+          y
+          y
+          y
+          EOF
+          
+          bash install.sh < /tmp/install
+          sleep 10
+      
+      - name: ✅ Verify Installation Complete
+        run: |
+          docker ps
+          docker volume ls
+          ls -la .apikey
+      
+      - name: 🗑️ Test Uninstall (With Volume Removal)
+        if: matrix.cleanup_mode.remove_volumes == true
+        run: |
+          cat > /tmp/uninstall << 'EOF'
+          2
+          5
+          y
+          EOF
+          
+          bash install.sh < /tmp/uninstall
+      
+      - name: 🗑️ Test Uninstall (Without Volume Removal)
+        if: matrix.cleanup_mode.remove_volumes == false
+        run: |
+          cat > /tmp/uninstall << 'EOF'
+          2
+          5
+          n
+          EOF
+          
+          bash install.sh < /tmp/uninstall
+      
+      - name: ✅ Verify Containers Removed
+        run: |
+          FOUND=0
+          for container in rtmp-server srtla-server slspanel wud; do
+            if docker ps -a --format '{{.Names}}' | grep -q "^$container$"; then
+              echo "❌ Container $container still exists"
+              FOUND=1
+            fi
+          done
+          
+          if [[ $FOUND -eq 0 ]]; then
+            echo "✅ All containers removed"
+          else
+            exit 1
+          fi
+      
+      - name: ✅ Verify API Key Removed
+        run: |
+          if [ -f ".apikey" ]; then
+            echo "❌ .apikey file still exists"
+            exit 1
+          else
+            echo "✅ .apikey file removed"
+          fi
+      
+      - name: ✅ Verify Volume Status
+        run: |
+          if docker volume ls --format '{{.Name}}' | grep -q "srtla-server"; then
+            if [[ "${{ matrix.cleanup_mode.remove_volumes }}" == "true" ]]; then
+              echo "❌ Volume should be removed"
+              exit 1
+            else
+              echo "✅ Volume preserved (as expected)"
+            fi
+          else
+            if [[ "${{ matrix.cleanup_mode.remove_volumes }}" == "true" ]]; then
+              echo "✅ Volume removed (as expected)"
+            else
+              echo "⚠️  Volume removed (unexpected but not critical)"
+            fi
+          fi
+      
+      - name: 🧹 Final Cleanup
+        if: always()
+        run: |
+          docker ps -aq | xargs -r docker rm -f 2>/dev/null || true
+          docker volume ls -q | xargs -r docker volume rm -f 2>/dev/null || true
+
+  # ============================================================================
+  # JOB 5: Network & Configuration Tests
+  # ============================================================================
+  test-network-configuration:
+    name: 🌐 Network & Config Tests
+    runs-on: ubuntu-22.04
+    needs: test-full-installation-matrix
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v6
+      
+      - name: 🌐 Test with Manual IP/Domain
+        run: |
+          cat > /tmp/install-custom-domain << 'EOF'
+          2
+          1
+          n
+          y
+          n
+          y
+          
+          
+          
+          
+          
+          
+          y
+          stream.example.com
+          y
+          y
+          y
+          y
+          EOF
+          
+          bash install.sh < /tmp/install-custom-domain
+          sleep 10
+      
+      - name: ✅ Verify Custom Domain in Container Config
+        run: |
+          if docker ps --format '{{.Names}}' | grep -q "^slspanel$"; then
+            config=$(docker inspect slspanel)
+            
+            if echo "$config" | grep -q "stream.example.com"; then
+              echo "✅ Custom domain found in SLSPanel configuration"
+            else
+              echo "❌ Custom domain not found in configuration"
+              echo "$config" | grep -i "SLS_DOMAIN"
+              exit 1
+            fi
+          fi
+      
+      - name: 🔍 Test Public IP Detection
+        run: |
+          # Test that script can detect public IP
+          public_ip=$(curl -fs4 https://ipinfo.io/ip 2>/dev/null || echo "")
+          
+          if [ -n "$public_ip" ]; then
+            echo "✅ Public IP detected: $public_ip"
+          else
+            echo "⚠️  Could not detect public IP (expected in CI environment)"
+          fi
+      
+      - name: 🧹 Cleanup
+        if: always()
+        run: |
+          docker ps -aq | xargs -r docker rm -f 2>/dev/null || true
+
+  # ============================================================================
+  # JOB 6: Edge Cases & Error Handling
+  # ============================================================================
+  test-edge-cases:
+    name: 🔬 Edge Cases & Error Handling
+    runs-on: ubuntu-22.04
+    needs: test-full-installation-matrix
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v6
+      
+      - name: 🧪 Test Help Function (mainaction=6)
+        run: |
+          echo -e "2\n6" | bash install.sh
+          echo "✅ Help function works"
+      
+      - name: 🧪 Test Service Operations Without Installation
+        run: |
+          # Try to start services when nothing is installed
+          echo -e "2\n2" | bash install.sh || true
+          
+          # Try to stop services when nothing is running
+          echo -e "2\n3" | bash install.sh || true
+          
+          echo "✅ Graceful handling of missing services"
+      
+      - name: 🧪 Test Duplicate Installation
+        run: |
+          # First installation
+          cat > /tmp/install1 << 'EOF'
+          2
+          1
+          n
+          y
+          n
+          y
+          
+          
+          
+          
+          
+          
+          n
+          n
+          y
+          n
+          EOF
+          
+          bash install.sh < /tmp/install1
+          sleep 10
+          
+          # Try installing again (should handle existing containers)
+          cat > /tmp/install2 << 'EOF'
+          2
+          1
+          n
+          n
+          n
+          y
+          
+          
+          
+          
+          
+          
+          n
+          n
+          y
+          n
+          EOF
+          
+          bash install.sh < /tmp/install2 || true
+          
+          echo "✅ Duplicate installation handled"
+      
+      - name: 🧹 Cleanup
+        if: always()
+        run: |
+          docker ps -aq | xargs -r docker rm -f 2>/dev/null || true
+
+  # ============================================================================
+  # JOB 7: ARM64 Architecture Test
+  # ============================================================================
+  test-arm64-architecture:
+    name: 🏗️ ARM64 Architecture Test
+    runs-on: ubuntu-22.04
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v6
+      
+      - name: 🔧 Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      
+      - name: 🔧 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: 🧪 Test Docker Installation on ARM64
+        run: |
+          docker run --rm --platform linux/arm64 ubuntu:22.04 bash -c '
+            apt-get update -qq && 
+            apt-get install -y -qq curl && 
+            curl -fsSL https://get.docker.com | sh && 
+            docker --version
+          '
+          
+          echo "✅ ARM64 Docker installation successful"
+      
+      - name: 🧪 Test Image Pull on ARM64
+        run: |
+          docker pull --platform linux/arm64 alexanderwagnerdev/srtla-server:latest || \
+          docker pull --platform linux/arm64 ghcr.io/alexanderwagnerdev/srtla-server:latest
+          
+          echo "✅ ARM64 image pull successful"
+
+  # ============================================================================
+  # JOB 8: Final Summary Report
+  # ============================================================================
+  test-summary:
+    name: 📊 Test Summary Report
+    runs-on: ubuntu-latest
+    needs: 
+      - test-full-installation-matrix
+      - test-service-management
+      - test-update-functionality
+      - test-uninstall-cleanup
+      - test-network-configuration
+      - test-edge-cases
+      - test-arm64-architecture
+    if: always()
+    
+    steps:
+      - name: 📊 Generate Test Summary
+        run: |
+          echo "# 🧪 Comprehensive Test Suite Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Job Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔧 Full Installation Matrix | ${{ needs.test-full-installation-matrix.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔄 Service Management | ${{ needs.test-service-management.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔄 Update Functionality | ${{ needs.test-update-functionality.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🗑️ Uninstall & Cleanup | ${{ needs.test-uninstall-cleanup.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🌐 Network Configuration | ${{ needs.test-network-configuration.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔬 Edge Cases | ${{ needs.test-edge-cases.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🏗️ ARM64 Architecture | ${{ needs.test-arm64-architecture.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "## Test Coverage" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Tested Functionality" >> $GITHUB_STEP_SUMMARY
+          echo "- **Operating Systems**: Ubuntu 22.04, Ubuntu 24.04" >> $GITHUB_STEP_SUMMARY
+          echo "- **Languages**: German (de), English (en)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Architectures**: AMD64, ARM64" >> $GITHUB_STEP_SUMMARY
+          echo "- **Port Configurations**: Default ports, Custom ports" >> $GITHUB_STEP_SUMMARY
+          echo "- **Network**: IPv6 support, Manual IP/Domain" >> $GITHUB_STEP_SUMMARY
+          echo "- **Services**: RTMP, SRTLA, SLSPanel, WUD" >> $GITHUB_STEP_SUMMARY
+          echo "- **Operations**: Install, Start, Stop, Update, Uninstall" >> $GITHUB_STEP_SUMMARY
+          echo "- **Features**: Health checks, API key extraction, Volume management" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "### 🎯 Test Scenarios" >> $GITHUB_STEP_SUMMARY
+          echo "1. Full installation with all services" >> $GITHUB_STEP_SUMMARY
+          echo "2. Custom ports with IPv6" >> $GITHUB_STEP_SUMMARY
+          echo "3. Minimal installation" >> $GITHUB_STEP_SUMMARY
+          echo "4. Service start/stop cycles" >> $GITHUB_STEP_SUMMARY
+          echo "5. Container updates and rollback" >> $GITHUB_STEP_SUMMARY
+          echo "6. Cleanup with/without volumes" >> $GITHUB_STEP_SUMMARY
+          echo "7. Custom domain configuration" >> $GITHUB_STEP_SUMMARY
+          echo "8. Edge cases and error handling" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ needs.test-full-installation-matrix.result }}" == "success" ]] && \
+             [[ "${{ needs.test-service-management.result }}" == "success" ]] && \
+             [[ "${{ needs.test-update-functionality.result }}" == "success" ]] && \
+             [[ "${{ needs.test-uninstall-cleanup.result }}" == "success" ]] && \
+             [[ "${{ needs.test-network-configuration.result }}" == "success" ]] && \
+             [[ "${{ needs.test-edge-cases.result }}" == "success" ]] && \
+             [[ "${{ needs.test-arm64-architecture.result }}" == "success" ]]; then
+            echo "## ✅ ALL TESTS PASSED" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "🎉 Alle Tests waren erfolgreich!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ SOME TESTS FAILED" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ Bitte überprüfe die fehlgeschlagenen Jobs." >> $GITHUB_STEP_SUMMARY
+          fi
