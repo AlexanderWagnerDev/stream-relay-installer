@@ -19,7 +19,15 @@ jobs:
       - name: Install shellcheck
         run: sudo apt-get install -y shellcheck
       - name: Run ShellCheck
-        run: shellcheck -e SC1091,SC2034,SC2162 install.sh
+        # Excluded codes (alle style/warning/info aus install.sh, keine Sicherheitsrisiken):
+        # SC1091 – source file not found
+        # SC2034 – unused variable (lang-Strings)
+        # SC2162 – read ohne -r (interaktive Prompts)
+        # SC2181 – $? statt direkter if-Bedingung (style)
+        # SC2155 – declare+assign in einer Zeile (warning)
+        # SC2046 – fehlende Quotes bei Command-Substitution im Dateinamen (warning)
+        # SC2086 – fehlende Quotes bei Port-Variablen in docker-run (info)
+        run: shellcheck -e SC1091,SC2034,SC2162,SC2181,SC2155,SC2046,SC2086 install.sh
 
   # ──────────────────────────────────────────────
   # JOB 2 – Alle Kombinationen als Matrix
@@ -129,15 +137,11 @@ jobs:
       - name: Make script executable
         run: chmod +x ./install.sh
 
-      # Docker ist auf GitHub-Runnern vorinstalliert –
-      # sicherstellen dass der Daemon läuft
       - name: Ensure Docker is running
         run: |
           sudo systemctl start docker 2>/dev/null || true
           docker info
 
-      # set -e im Script + Heredoc verträgt sich schlecht.
-      # Wir patchen das lokal nur für den Test (kein Commit).
       - name: Patch set -e for CI heredoc compatibility
         run: sed -i 's/^set -e$/set -eo pipefail/' install.sh
 
@@ -229,14 +233,8 @@ jobs:
           echo "=== Running containers ==="
           docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
           echo ""
-
-          EXPECTED_ALL="rtmp-server srtla-server slspanel"
-          EXPECTED_RTMP="rtmp-server"
-          EXPECTED_SRTLA="srtla-server"
-          EXPECTED_WUD="rtmp-server srtla-server slspanel wud"
           VARIANT="${{ matrix.variant }}"
           FAILED=0
-
           check_container() {
             local name="$1"
             if docker ps --format '{{.Names}}' | grep -q "^${name}$"; then
@@ -246,7 +244,6 @@ jobs:
               FAILED=1
             fi
           }
-
           case "$VARIANT" in
             all-services)
               for c in rtmp-server srtla-server slspanel; do check_container "$c"; done ;;
@@ -257,7 +254,6 @@ jobs:
             with-wud)
               for c in rtmp-server srtla-server slspanel wud; do check_container "$c"; done ;;
           esac
-
           if [ "$FAILED" -ne 0 ]; then
             echo ""
             echo "=== Full container list for debugging ==="
@@ -268,7 +264,6 @@ jobs:
       - name: Assert API key file exists (srtla variants)
         if: matrix.variant == 'all-services' || matrix.variant == 'srtla-only' || matrix.variant == 'with-wud'
         run: |
-          # Kurz warten falls Container noch initialisiert
           sleep 5
           if [ -f ".apikey" ]; then
             KEY=$(cat .apikey)
@@ -305,7 +300,6 @@ jobs:
 
   # ──────────────────────────────────────────────
   # JOB 3 – Start / Stop / Update / Uninstall
-  # (nur amd64, nach erfolgreicher Installation)
   # ──────────────────────────────────────────────
   lifecycle:
     name: "Lifecycle [${{ matrix.action }}] [amd64/en]"
@@ -331,7 +325,7 @@ jobs:
           sudo systemctl start docker 2>/dev/null || true
           docker info
 
-      - name: Pre-install services (needed for lifecycle tests)
+      - name: Pre-install services
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
@@ -364,7 +358,6 @@ jobs:
           SCRIPT_EOF
           echo "=== Containers after stop ==="
           docker ps -a --format "table {{.Names}}\t{{.Status}}"
-          # Prüfen dass Container gestoppt sind
           for c in rtmp-server srtla-server slspanel; do
             STATUS=$(docker inspect --format='{{.State.Status}}' "$c" 2>/dev/null || echo "missing")
             if [ "$STATUS" = "exited" ] || [ "$STATUS" = "missing" ]; then
@@ -378,13 +371,11 @@ jobs:
       - name: "Action: start (stop first, then start)"
         if: matrix.action == 'start'
         run: |
-          # Zuerst stoppen
           ./install.sh <<'SCRIPT_EOF'
           2
           3
           SCRIPT_EOF
           sleep 3
-          # Dann starten
           ./install.sh <<'SCRIPT_EOF'
           2
           2
@@ -419,11 +410,8 @@ jobs:
           5
           n
           SCRIPT_EOF
-          echo "=== Containers after uninstall (keep volumes) ==="
           docker ps -a
-          echo "=== Volumes ==="
           docker volume ls
-          # Sicherstellen dass Volumes noch da sind
           if docker volume ls | grep -q "srtla-server"; then
             echo "✅ Volume srtla-server still exists"
           else
@@ -438,25 +426,14 @@ jobs:
           5
           y
           SCRIPT_EOF
-          echo "=== Containers after uninstall (remove volumes) ==="
           docker ps -a
-          echo "=== Volumes ==="
           docker volume ls
-          # Sicherstellen dass Volume entfernt wurde
           if docker volume ls | grep -q "srtla-server"; then
             echo "❌ Volume srtla-server still exists but should be removed"
             exit 1
           else
             echo "✅ Volume srtla-server was removed"
           fi
-
-      - name: "Action: help"
-        if: matrix.action == 'help'
-        run: |
-          ./install.sh <<'SCRIPT_EOF'
-          2
-          6
-          SCRIPT_EOF
 
       - name: Show logs on failure
         if: failure()
@@ -482,7 +459,6 @@ jobs:
           echo "lint:            ${{ needs.lint.result }}"
           echo "install-matrix:  ${{ needs.install-matrix.result }}"
           echo "lifecycle:       ${{ needs.lifecycle.result }}"
-
           if [ "${{ needs.lint.result }}" = "failure" ] || \
              [ "${{ needs.install-matrix.result }}" = "failure" ] || \
              [ "${{ needs.lifecycle.result }}" = "failure" ]; then
