@@ -92,11 +92,7 @@ function read_port () {
   local default_port="$2"
   local lang="$3"
   local response
-  if [[ "$lang" == "de" ]]; then
-    echo -n "$prompt [$default_port]: "
-  else
-    echo -n "$prompt [$default_port]: "
-  fi
+  echo -n "$prompt [$default_port]: "
   read -r response
   if [[ -z "$response" ]]; then
     response=$default_port
@@ -167,7 +163,7 @@ function print_available_services() {
     echo -e "${SUCCESS}SRT Player URL ZUM EMPFANGEN (Beispiel): srt://${public_ip}:${srt_player_port}?streamid=playkey${NC}"
     echo -e "${SUCCESS}SRT/SRTLA Statistiken URL (Beispiel): http://${public_ip}:${sls_stats_port}/stats/playkey${NC}"
     echo -e "${SUCCESS}RTMP Statistiken URL: http://${public_ip}:${rtmp_stats_port}/stats${NC}"
-    echo -e "${SUCCESS}RTMP URL ZUM SENDEN UND EMPFANGEN (Example): rtmp://${public_ip}:${rtmp_port}/publish/livekey${NC}"
+    echo -e "${SUCCESS}RTMP URL ZUM SENDEN UND EMPFANGEN (Beispiel): rtmp://${public_ip}:${rtmp_port}/publish/livekey${NC}"
   else
     echo -e "${HEADER}Available services:${NC}"
     echo -e "${SUCCESS}SLSPanel UI: http://${public_ip}:${management_port}${NC}"
@@ -228,7 +224,7 @@ function health_check() {
 function stop_services() {
   for cname in rtmp-server srtla-server slspanel wud; do
     if docker ps --format '{{.Names}}' | grep -q "^$cname$"; then
-      docker stop "$cname"
+      docker stop "$cname" || true
       [[ "$lang" == "de" ]] && echo -e "${INFO}Container $cname gestoppt.${NC}" || echo -e "${INFO}Stopped container $cname.${NC}"
     fi
   done
@@ -236,7 +232,7 @@ function stop_services() {
 
 function start_services() {
   for cname in rtmp-server srtla-server slspanel wud; do
-    docker start "$cname" 2>/dev/null
+    docker start "$cname" 2>/dev/null || true
     health_check "$cname"
   done
 }
@@ -244,8 +240,7 @@ function start_services() {
 function get_container_config() {
   local cname="$1"
   local config
-  config=$(docker inspect "$cname" 2>/dev/null)
-  if [[ $? -ne 0 ]]; then
+  if ! config=$(docker inspect "$cname" 2>/dev/null); then
     echo ""
     return 1
   fi
@@ -303,7 +298,7 @@ function recreate_container() {
   
   if [[ -n "$mounts" ]]; then
     while IFS= read -r mount; do
-      if [[ "$mount" =~ \"Source\":\"([^\"]+)\",.*\"Destination\":\"([^\"]+)\" ]]; then
+      if [[ "$mount" =~ \"Source\":\"([^\"]+)\".*\"Destination\":\"([^\"]+)\" ]]; then
         src="${BASH_REMATCH[1]}"
         dst="${BASH_REMATCH[2]}"
         volumes_args="$volumes_args -v \"$src:$dst\""
@@ -325,15 +320,17 @@ function recreate_container() {
     fi
   done <<< "$labels"
   
-  docker stop "$cname" 2>/dev/null
-  docker rm "$cname" 2>/dev/null
-  
+  docker stop "$cname" 2>/dev/null || true
+  docker rm "$cname" 2>/dev/null || true
+
   [[ "$lang" == "de" ]] && echo -e "${INFO}Entferne alte Images...${NC}" || echo -e "${INFO}Removing old images...${NC}"
   docker rmi -f "$image" 2>/dev/null || true
   docker rmi -f "$fallback_image" 2>/dev/null || true
-  local image_base=$(echo "$image" | cut -d':' -f1)
+  local image_base
+  image_base=$(echo "$image" | cut -d':' -f1)
   docker images --format "{{.Repository}}:{{.Tag}}" | grep "^${image_base}:" | xargs -r docker rmi -f 2>/dev/null || true
-  local fallback_base=$(echo "$fallback_image" | cut -d':' -f1)
+  local fallback_base
+  fallback_base=$(echo "$fallback_image" | cut -d':' -f1)
   docker images --format "{{.Repository}}:{{.Tag}}" | grep "^${fallback_base}:" | xargs -r docker rmi -f 2>/dev/null || true
   
   docker_pull_fallback "$image" "$fallback_image"
@@ -386,28 +383,28 @@ function update_services() {
 function uninstall_services() {
   for cname in rtmp-server srtla-server slspanel wud; do
     if docker ps -a --format '{{.Names}}' | grep -q "^$cname$"; then
-      docker rm -f "$cname"
+      docker rm -f "$cname" || true
       [[ "$lang" == "de" ]] && echo -e "${INFO}Container $cname entfernt.${NC}" || echo -e "${INFO}Removed container $cname.${NC}"
     fi
   done
   for img in alexanderwagnerdev/rtmp-server alexanderwagnerdev/srtla-server alexanderwagnerdev/slspanel getwud/wud; do
-    docker rmi -f "$img" 2>/dev/null
-    docker rmi -f "ghcr.io/$img" 2>/dev/null
+    docker rmi -f "$img" 2>/dev/null || true
+    docker rmi -f "ghcr.io/$img" 2>/dev/null || true
   done
   
   if [ -f ".apikey" ]; then
-  rm -f ".apikey"
-  if [[ "$lang" == "de" ]]; then
-    echo -e "${SUCCESS}API-Key Datei (.apikey) gelöscht.${NC}"
-  else
-    echo -e "${SUCCESS}API key file (.apikey) deleted.${NC}"
-  fi
+    rm -f ".apikey"
+    if [[ "$lang" == "de" ]]; then
+      echo -e "${SUCCESS}API-Key Datei (.apikey) gelöscht.${NC}"
+    else
+      echo -e "${SUCCESS}API key file (.apikey) deleted.${NC}"
+    fi
   fi
   
   if [[ "$lang" == "de" ]]; then
     read -rp $'\033[1;33mSollen auch Volumes gelöscht werden? (j/n):\033[0m ' rmvol
     if [[ "$rmvol" =~ ^[Jj] ]]; then
-      docker volume rm srtla-server 2>/dev/null
+      docker volume rm srtla-server 2>/dev/null || true
       echo -e "${SUCCESS}Docker-Volume srtla-server entfernt.${NC}"
     else
       echo -e "${INFO}Volumes bleiben erhalten.${NC}"
@@ -416,7 +413,7 @@ function uninstall_services() {
   else
     read -rp $'\033[1;33mShould volumes be deleted as well? (y/n):\033[0m ' rmvol
     if [[ "$rmvol" =~ ^[Yy] ]]; then
-      docker volume rm srtla-server 2>/dev/null
+      docker volume rm srtla-server 2>/dev/null || true
       echo -e "${SUCCESS}Docker volume srtla-server removed.${NC}"
     else
       echo -e "${INFO}Volumes are kept.${NC}"
@@ -569,9 +566,15 @@ if [[ "$mainaction" == "1" ]]; then
   if [[ "$enable_ipv6" =~ ^[JjYy] ]]; then
     echo -e "$ipv6_enable_msg"
     if [[ -f /etc/docker/daemon.json ]]; then
-      sudo cp /etc/docker/daemon.json /etc/docker/daemon.json.bak_$(date +%s)
+      sudo cp /etc/docker/daemon.json "/etc/docker/daemon.json.bak_$(date +%s)"
+      if grep -q '"ipv6"' /etc/docker/daemon.json; then
+        sudo sed -i 's/"ipv6"\s*:\s*false/"ipv6": true/g' /etc/docker/daemon.json
+      else
+        sudo sed -i 's/}[[:space:]]*$/,\n  "ipv6": true\n}/' /etc/docker/daemon.json
+      fi
+    else
+      echo '{ "ipv6": true }' | sudo tee /etc/docker/daemon.json > /dev/null
     fi
-    echo '{ "ipv6": true }' | sudo tee /etc/docker/daemon.json > /dev/null
     sudo systemctl restart docker
   else
     echo -e "$ipv6_skip_msg"
@@ -600,19 +603,11 @@ if [[ "$mainaction" == "1" ]]; then
   MANUAL_IP=""
   public_ip=$(get_public_ip)
 
-  if [[ "$lang" == "de" ]]; then
-    read -rp "$manual_ip_prompt " manual_ip_choice
-  else
-    read -rp "$manual_ip_prompt " manual_ip_choice
-  fi
+  read -rp "$manual_ip_prompt " manual_ip_choice
   manual_ip_choice=${manual_ip_choice:-n}
 
   if [[ "$manual_ip_choice" =~ ^[JjYy] ]]; then
-    if [[ "$lang" == "de" ]]; then
-      read -rp "$enter_ip_prompt " custom_ip
-    else
-      read -rp "$enter_ip_prompt " custom_ip
-    fi
+    read -rp "$enter_ip_prompt " custom_ip
     MANUAL_IP="$custom_ip"
     public_ip="$custom_ip"
   fi
@@ -757,13 +752,16 @@ if [[ "$mainaction" == "1" ]]; then
       slspanel_username=${slspanel_username:-admin}
       read -rsp "$slspanel_password_prompt" slspanel_password
       echo ""
-      slspanel_password=${slspanel_password:-password}
     else
       slspanel_username=""
       slspanel_password=""
     fi
 
-    echo -e "$([ \"$lang\" == \"de\" ] && echo \"Starte SLSPanel Docker-Container...\" || echo \"Starting SLSPanel Docker container...\")"
+    if [[ "$lang" == "de" ]]; then
+      echo -e "${INFO}Starte SLSPanel Docker-Container...${NC}"
+    else
+      echo -e "${INFO}Starting SLSPanel Docker container...${NC}"
+    fi
 
     slspanel_api_url="http://${public_ip}:${sls_stats_port}"
     apikey=$(cat .apikey 2>/dev/null || echo your_api_key)
@@ -837,7 +835,11 @@ if [[ "$mainaction" == "1" ]]; then
 
     health_check slspanel
   else
-    echo -e "$([ \"$lang\" == \"de\" ] && echo \"SLSPanel wird nicht installiert.\" || echo \"Skipping SLSPanel installation.\")"
+    if [[ "$lang" == "de" ]]; then
+      echo -e "${INFO}SLSPanel wird nicht installiert.${NC}"
+    else
+      echo -e "${INFO}Skipping SLSPanel installation.${NC}"
+    fi
   fi
 
   print_available_services "$app_url" "$slspanel_port" "$(cat .apikey 2>/dev/null || echo 'N/A')"
