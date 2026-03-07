@@ -565,14 +565,11 @@ if [[ "$mainaction" == "1" ]]; then
   enable_ipv6=${enable_ipv6:-n}
   if [[ "$enable_ipv6" =~ ^[JjYy] ]]; then
     echo -e "$ipv6_enable_msg"
-    # Bestehende daemon.json sichern und IPv6 ergänzen ohne anderen Inhalt zu verlieren
     if [[ -f /etc/docker/daemon.json ]]; then
       sudo cp /etc/docker/daemon.json "/etc/docker/daemon.json.bak_$(date +%s)"
-      # IPv6 in bestehende Config einfügen (ohne jq: sed-basierter Merge)
       if grep -q '"ipv6"' /etc/docker/daemon.json; then
         sudo sed -i 's/"ipv6"\s*:\s*false/"ipv6": true/g' /etc/docker/daemon.json
       else
-        # Füge "ipv6": true vor dem letzten } ein
         sudo sed -i 's/}[[:space:]]*$/,\n  "ipv6": true\n}/' /etc/docker/daemon.json
       fi
     else
@@ -753,18 +750,8 @@ if [[ "$mainaction" == "1" ]]; then
     if [[ "$enable_login" =~ ^[JjYy] ]]; then
       read -rp "$slspanel_username_prompt" slspanel_username
       slspanel_username=${slspanel_username:-admin}
-      while true; do
-        read -rsp "$slspanel_password_prompt" slspanel_password
-        echo ""
-        if [[ -n "$slspanel_password" ]]; then
-          break
-        fi
-        if [[ "$lang" == "de" ]]; then
-          echo -e "${ERROR}Passwort darf nicht leer sein. Bitte erneut eingeben.${NC}"
-        else
-          echo -e "${ERROR}Password must not be empty. Please try again.${NC}"
-        fi
-      done
+      read -rsp "$slspanel_password_prompt" slspanel_password
+      echo ""
     else
       slspanel_username=""
       slspanel_password=""
