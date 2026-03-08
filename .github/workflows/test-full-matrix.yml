@@ -22,7 +22,7 @@ jobs:
         run: shellcheck -e SC1091,SC2034,SC2162,SC2181,SC2155,SC2046,SC2086 install.sh
 
   # ════════════════════════════════════════════
-  # JOB 2 – Install-Matrix (alle Varianten)
+  # JOB 2 – Install matrix (all variants)
   # ════════════════════════════════════════════
   install-matrix:
     name: "Install [${{ matrix.arch }}/${{ matrix.lang }}] ${{ matrix.variant }}"
@@ -39,7 +39,7 @@ jobs:
           # amd64 / English
           # ────────────────────────────────────
 
-          # Alle Services, kein Docker-Install, kein System-Update
+          # All services, no Docker install, no system update
           - arch: amd64
             runner: ubuntu-latest
             lang: en
@@ -56,7 +56,7 @@ jobs:
             slspanel: "y"
             slspanel_login: "y"
 
-          # Alle Services + System-Update, kein Docker-Install
+          # All services + system update, no Docker install
           - arch: amd64
             runner: ubuntu-latest
             lang: en
@@ -73,7 +73,7 @@ jobs:
             slspanel: "y"
             slspanel_login: "y"
 
-          # Alle Services + Docker-Install, kein System-Update
+          # All services + Docker install, no system update
           - arch: amd64
             runner: ubuntu-latest
             lang: en
@@ -90,7 +90,7 @@ jobs:
             slspanel: "y"
             slspanel_login: "y"
 
-          # Alle Services + Docker-Install + System-Update
+          # All services + Docker install + system update
           - arch: amd64
             runner: ubuntu-latest
             lang: en
@@ -107,7 +107,7 @@ jobs:
             slspanel: "y"
             slspanel_login: "y"
 
-          # Nur RTMP
+          # RTMP only
           - arch: amd64
             runner: ubuntu-latest
             lang: en
@@ -124,7 +124,7 @@ jobs:
             slspanel: "n"
             slspanel_login: "n"
 
-          # Nur SRTLA
+          # SRTLA only
           - arch: amd64
             runner: ubuntu-latest
             lang: en
@@ -141,7 +141,7 @@ jobs:
             slspanel: "n"
             slspanel_login: "n"
 
-          # Nur SLSPanel (ohne Login)
+          # SLSPanel only (no login)
           - arch: amd64
             runner: ubuntu-latest
             lang: en
@@ -158,7 +158,7 @@ jobs:
             slspanel: "y"
             slspanel_login: "n"
 
-          # RTMP + SRTLA (kein SLSPanel, kein WUD)
+          # RTMP + SRTLA only (no SLSPanel, no WUD)
           - arch: amd64
             runner: ubuntu-latest
             lang: en
@@ -175,7 +175,7 @@ jobs:
             slspanel: "n"
             slspanel_login: "n"
 
-          # RTMP + SRTLA + SLSPanel ohne Login, kein WUD
+          # RTMP + SRTLA + SLSPanel without login, no WUD
           - arch: amd64
             runner: ubuntu-latest
             lang: en
@@ -192,7 +192,7 @@ jobs:
             slspanel: "y"
             slspanel_login: "n"
 
-          # Nur WUD
+          # WUD only
           - arch: amd64
             runner: ubuntu-latest
             lang: en
@@ -210,10 +210,10 @@ jobs:
             slspanel_login: "n"
 
           # ────────────────────────────────────
-          # amd64 / Deutsch
+          # amd64 / German
           # ────────────────────────────────────
 
-          # Alle Services, kein Docker-Install, kein System-Update
+          # All services, no Docker install, no system update
           - arch: amd64
             runner: ubuntu-latest
             lang: de
@@ -230,7 +230,7 @@ jobs:
             slspanel: "j"
             slspanel_login: "j"
 
-          # Alle Services + System-Update, kein Docker-Install
+          # All services + system update, no Docker install
           - arch: amd64
             runner: ubuntu-latest
             lang: de
@@ -247,7 +247,7 @@ jobs:
             slspanel: "j"
             slspanel_login: "j"
 
-          # Alle Services + Docker-Install, kein System-Update
+          # All services + Docker install, no system update
           - arch: amd64
             runner: ubuntu-latest
             lang: de
@@ -264,7 +264,7 @@ jobs:
             slspanel: "j"
             slspanel_login: "j"
 
-          # Alle Services + Docker-Install + System-Update
+          # All services + Docker install + system update
           - arch: amd64
             runner: ubuntu-latest
             lang: de
@@ -281,7 +281,7 @@ jobs:
             slspanel: "j"
             slspanel_login: "j"
 
-          # Nur RTMP
+          # RTMP only
           - arch: amd64
             runner: ubuntu-latest
             lang: de
@@ -298,7 +298,7 @@ jobs:
             slspanel: "n"
             slspanel_login: "n"
 
-          # Nur SRTLA
+          # SRTLA only
           - arch: amd64
             runner: ubuntu-latest
             lang: de
@@ -315,7 +315,7 @@ jobs:
             slspanel: "n"
             slspanel_login: "n"
 
-          # Nur SLSPanel (ohne Login)
+          # SLSPanel only (no login)
           - arch: amd64
             runner: ubuntu-latest
             lang: de
@@ -332,7 +332,7 @@ jobs:
             slspanel: "j"
             slspanel_login: "n"
 
-          # RTMP + SRTLA (kein SLSPanel, kein WUD)
+          # RTMP + SRTLA only (no SLSPanel, no WUD)
           - arch: amd64
             runner: ubuntu-latest
             lang: de
@@ -349,7 +349,7 @@ jobs:
             slspanel: "n"
             slspanel_login: "n"
 
-          # RTMP + SRTLA + SLSPanel ohne Login, kein WUD
+          # RTMP + SRTLA + SLSPanel without login, no WUD
           - arch: amd64
             runner: ubuntu-latest
             lang: de
@@ -366,7 +366,7 @@ jobs:
             slspanel: "j"
             slspanel_login: "n"
 
-          # Nur WUD
+          # WUD only
           - arch: amd64
             runner: ubuntu-latest
             lang: de
@@ -387,7 +387,7 @@ jobs:
           # arm64 / English
           # ────────────────────────────────────
 
-          # Alle Services, kein Docker-Install, kein System-Update
+          # All services, no Docker install, no system update
           - arch: arm64
             runner: ubuntu-24.04-arm
             lang: en
@@ -404,7 +404,7 @@ jobs:
             slspanel: "y"
             slspanel_login: "y"
 
-          # Alle Services + System-Update, kein Docker-Install
+          # All services + system update, no Docker install
           - arch: arm64
             runner: ubuntu-24.04-arm
             lang: en
@@ -421,7 +421,7 @@ jobs:
             slspanel: "y"
             slspanel_login: "y"
 
-          # Alle Services + Docker-Install, kein System-Update
+          # All services + Docker install, no system update
           - arch: arm64
             runner: ubuntu-24.04-arm
             lang: en
@@ -438,7 +438,7 @@ jobs:
             slspanel: "y"
             slspanel_login: "y"
 
-          # Alle Services + Docker-Install + System-Update
+          # All services + Docker install + system update
           - arch: arm64
             runner: ubuntu-24.04-arm
             lang: en
@@ -455,7 +455,7 @@ jobs:
             slspanel: "y"
             slspanel_login: "y"
 
-          # Nur RTMP
+          # RTMP only
           - arch: arm64
             runner: ubuntu-24.04-arm
             lang: en
@@ -472,7 +472,7 @@ jobs:
             slspanel: "n"
             slspanel_login: "n"
 
-          # Nur SRTLA
+          # SRTLA only
           - arch: arm64
             runner: ubuntu-24.04-arm
             lang: en
@@ -489,7 +489,7 @@ jobs:
             slspanel: "n"
             slspanel_login: "n"
 
-          # Nur SLSPanel (ohne Login)
+          # SLSPanel only (no login)
           - arch: arm64
             runner: ubuntu-24.04-arm
             lang: en
@@ -506,7 +506,7 @@ jobs:
             slspanel: "y"
             slspanel_login: "n"
 
-          # RTMP + SRTLA (kein SLSPanel, kein WUD)
+          # RTMP + SRTLA only (no SLSPanel, no WUD)
           - arch: arm64
             runner: ubuntu-24.04-arm
             lang: en
@@ -523,7 +523,7 @@ jobs:
             slspanel: "n"
             slspanel_login: "n"
 
-          # RTMP + SRTLA + SLSPanel ohne Login, kein WUD
+          # RTMP + SRTLA + SLSPanel without login, no WUD
           - arch: arm64
             runner: ubuntu-24.04-arm
             lang: en
@@ -540,7 +540,7 @@ jobs:
             slspanel: "y"
             slspanel_login: "n"
 
-          # Nur WUD
+          # WUD only
           - arch: arm64
             runner: ubuntu-24.04-arm
             lang: en
@@ -558,10 +558,10 @@ jobs:
             slspanel_login: "n"
 
           # ────────────────────────────────────
-          # arm64 / Deutsch
+          # arm64 / German
           # ────────────────────────────────────
 
-          # Alle Services, kein Docker-Install, kein System-Update
+          # All services, no Docker install, no system update
           - arch: arm64
             runner: ubuntu-24.04-arm
             lang: de
@@ -578,7 +578,7 @@ jobs:
             slspanel: "j"
             slspanel_login: "j"
 
-          # Alle Services + System-Update, kein Docker-Install
+          # All services + system update, no Docker install
           - arch: arm64
             runner: ubuntu-24.04-arm
             lang: de
@@ -595,7 +595,7 @@ jobs:
             slspanel: "j"
             slspanel_login: "j"
 
-          # Alle Services + Docker-Install, kein System-Update
+          # All services + Docker install, no system update
           - arch: arm64
             runner: ubuntu-24.04-arm
             lang: de
@@ -612,7 +612,7 @@ jobs:
             slspanel: "j"
             slspanel_login: "j"
 
-          # Alle Services + Docker-Install + System-Update
+          # All services + Docker install + system update
           - arch: arm64
             runner: ubuntu-24.04-arm
             lang: de
@@ -629,7 +629,7 @@ jobs:
             slspanel: "j"
             slspanel_login: "j"
 
-          # Nur RTMP
+          # RTMP only
           - arch: arm64
             runner: ubuntu-24.04-arm
             lang: de
@@ -646,7 +646,7 @@ jobs:
             slspanel: "n"
             slspanel_login: "n"
 
-          # Nur SRTLA
+          # SRTLA only
           - arch: arm64
             runner: ubuntu-24.04-arm
             lang: de
@@ -663,7 +663,7 @@ jobs:
             slspanel: "n"
             slspanel_login: "n"
 
-          # Nur SLSPanel (ohne Login)
+          # SLSPanel only (no login)
           - arch: arm64
             runner: ubuntu-24.04-arm
             lang: de
@@ -680,7 +680,7 @@ jobs:
             slspanel: "j"
             slspanel_login: "n"
 
-          # RTMP + SRTLA (kein SLSPanel, kein WUD)
+          # RTMP + SRTLA only (no SLSPanel, no WUD)
           - arch: arm64
             runner: ubuntu-24.04-arm
             lang: de
@@ -697,7 +697,7 @@ jobs:
             slspanel: "n"
             slspanel_login: "n"
 
-          # RTMP + SRTLA + SLSPanel ohne Login, kein WUD
+          # RTMP + SRTLA + SLSPanel without login, no WUD
           - arch: arm64
             runner: ubuntu-24.04-arm
             lang: de
@@ -714,7 +714,7 @@ jobs:
             slspanel: "j"
             slspanel_login: "n"
 
-          # Nur WUD
+          # WUD only
           - arch: arm64
             runner: ubuntu-24.04-arm
             lang: de
@@ -737,7 +737,7 @@ jobs:
       - name: Make script executable
         run: chmod +x ./install.sh
 
-      - name: Patch set -e for CI heredoc compatibility
+      - name: Patch set -e for CI pipefail compatibility
         run: sed -i 's/^set -e$/set -eo pipefail/' install.sh
 
       - name: Ensure Docker is available
@@ -745,7 +745,7 @@ jobs:
           sudo systemctl start docker 2>/dev/null || true
           docker info
 
-      # ── Variante: all-no-docker-no-update ────
+      # -- Variant: all-no-docker-no-update --------
       - name: "Run install (all-no-docker-no-update)"
         if: matrix.variant == 'all-no-docker-no-update'
         env:
@@ -769,7 +769,7 @@ jobs:
           password
           SCRIPT_EOF
 
-      # ── Variante: all-with-update-no-docker ──
+      # -- Variant: all-with-update-no-docker ------
       - name: "Run install (all-with-update-no-docker)"
         if: matrix.variant == 'all-with-update-no-docker'
         env:
@@ -794,7 +794,7 @@ jobs:
           password
           SCRIPT_EOF
 
-      # ── Variante: all-with-docker-no-update ──
+      # -- Variant: all-with-docker-no-update ------
       - name: "Run install (all-with-docker-no-update)"
         if: matrix.variant == 'all-with-docker-no-update'
         env:
@@ -818,7 +818,7 @@ jobs:
           password
           SCRIPT_EOF
 
-      # ── Variante: all-with-docker-and-update ─
+      # -- Variant: all-with-docker-and-update -----
       - name: "Run install (all-with-docker-and-update)"
         if: matrix.variant == 'all-with-docker-and-update'
         env:
@@ -843,7 +843,7 @@ jobs:
           password
           SCRIPT_EOF
 
-      # ── Variante: rtmp-only ───────────────────
+      # -- Variant: rtmp-only ----------------------
       - name: "Run install (rtmp-only)"
         if: matrix.variant == 'rtmp-only'
         env:
@@ -863,7 +863,7 @@ jobs:
           ${{ matrix.no }}
           SCRIPT_EOF
 
-      # ── Variante: srtla-only ──────────────────
+      # -- Variant: srtla-only ---------------------
       - name: "Run install (srtla-only)"
         if: matrix.variant == 'srtla-only'
         env:
@@ -883,7 +883,7 @@ jobs:
           ${{ matrix.no }}
           SCRIPT_EOF
 
-      # ── Variante: slspanel-only-no-login ─────
+      # -- Variant: slspanel-only-no-login ---------
       - name: "Run install (slspanel-only-no-login)"
         if: matrix.variant == 'slspanel-only-no-login'
         env:
@@ -904,7 +904,7 @@ jobs:
           ${{ matrix.no }}
           SCRIPT_EOF
 
-      # ── Variante: rtmp-srtla-only ─────────────
+      # -- Variant: rtmp-srtla-only ----------------
       - name: "Run install (rtmp-srtla-only)"
         if: matrix.variant == 'rtmp-srtla-only'
         env:
@@ -924,7 +924,7 @@ jobs:
           ${{ matrix.no }}
           SCRIPT_EOF
 
-      # ── Variante: all-no-wud-no-login ────────
+      # -- Variant: all-no-wud-no-login ------------
       - name: "Run install (all-no-wud-no-login)"
         if: matrix.variant == 'all-no-wud-no-login'
         env:
@@ -945,7 +945,7 @@ jobs:
           ${{ matrix.no }}
           SCRIPT_EOF
 
-      # ── Variante: wud-only ────────────────────
+      # -- Variant: wud-only -----------------------
       - name: "Run install (wud-only)"
         if: matrix.variant == 'wud-only'
         env:
@@ -965,7 +965,7 @@ jobs:
           ${{ matrix.no }}
           SCRIPT_EOF
 
-      # ── Assertions ───────────────────────────
+      # -- Assertions ------------------------------
       - name: Assert containers running
         run: |
           echo "=== Running containers ==="
@@ -1005,7 +1005,7 @@ jobs:
             exit 1
           fi
 
-      - name: Assert .apikey exists (SRTLA-Varianten)
+      - name: Assert .apikey exists (SRTLA variants)
         if: |
           matrix.variant == 'all-no-docker-no-update' ||
           matrix.variant == 'all-with-update-no-docker' ||
@@ -1024,7 +1024,7 @@ jobs:
               echo "⚠️  .apikey exists but is empty"
             fi
           else
-            echo "⚠️  .apikey not found (Container evtl. noch nicht initialisiert)"
+            echo "⚠️  .apikey not found (container may still be initializing)"
           fi
 
       - name: Container health summary
@@ -1050,7 +1050,7 @@ jobs:
           done
 
   # ════════════════════════════════════════════
-  # JOB 3 – Lifecycle (Stop/Start/Update/Uninstall)
+  # JOB 3 – Lifecycle (stop/start/update/uninstall)
   # ════════════════════════════════════════════
   lifecycle:
     name: "Lifecycle [${{ matrix.arch }}/${{ matrix.lang }}] ${{ matrix.action }}"
@@ -1200,7 +1200,7 @@ jobs:
           sudo systemctl start docker 2>/dev/null || true
           docker info
 
-      - name: Pre-install all services (Basis für Lifecycle-Tests)
+      - name: Pre-install all services (lifecycle test base)
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
@@ -1343,7 +1343,7 @@ jobs:
           done
 
   # ════════════════════════════════════════════
-  # JOB 4 – Help-Funktion
+  # JOB 4 – Help
   # ════════════════════════════════════════════
   help-test:
     name: "Help [${{ matrix.arch }}/${{ matrix.lang }}]"
@@ -1394,7 +1394,7 @@ jobs:
           fi
 
   # ════════════════════════════════════════════
-  # JOB 5 – Zusammenfassung
+  # JOB 5 – Summary
   # ════════════════════════════════════════════
   summary:
     name: "Test Summary"
@@ -1414,8 +1414,8 @@ jobs:
           [ "${{ needs.lifecycle.result }}" = "failure" ] && FAILED=1
           [ "${{ needs.help-test.result }}" = "failure" ] && FAILED=1
           if [ "$FAILED" -ne 0 ]; then
-            echo "❌ Mindestens ein Job ist fehlgeschlagen."
+            echo "❌ At least one job failed."
             exit 1
           else
-            echo "✅ Alle Jobs erfolgreich."
+            echo "✅ All jobs succeeded."
           fi
