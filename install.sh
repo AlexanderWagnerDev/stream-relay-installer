@@ -236,15 +236,9 @@ function start_services() {
     health_check "$cname"
   done
 }
-
 function get_container_config() {
   local cname="$1"
-  local config
-  if ! config=$(docker inspect "$cname" 2>/dev/null); then
-    echo ""
-    return 1
-  fi
-  echo "$config"
+  docker inspect "$cname" 2>/dev/null || echo "{}"
 }
 
 function recreate_container() {
