@@ -2,9 +2,9 @@ name: Full Matrix Test
 
 on:
   push:
-    branches: [main]
+    branches: [main, beta]
   pull_request:
-    branches: [main]
+    branches: [main, beta]
   workflow_dispatch:
 
 jobs:
@@ -963,6 +963,7 @@ jobs:
           ${{ matrix.no }}
           ${{ matrix.no }}
           ${{ matrix.no }}
+          ${{ matrix.no }}
           SCRIPT_EOF
 
       # -- Assertions ------------------------------
@@ -1024,7 +1025,7 @@ jobs:
               echo "⚠️  .apikey exists but is empty"
             fi
           else
-            echo "⚠️  .apikey not found (container may still be initializing)"
+            echo "⚠️  .apikey not found (Container evtl. container may still be initializing)"
           fi
 
       - name: Container health summary
