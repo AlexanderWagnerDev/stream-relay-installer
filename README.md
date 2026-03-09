@@ -1,6 +1,6 @@
 <img src="https://assets.stream-relay-installer.de/Logo.webp" alt="Logo" width="400" />
 
-# Stream Relay Installer  
+# Stream Relay Installer (Beta)
 
 This script installs **Docker** along with an **RTMP** and **SRTLA relay server** on Debian and Ubuntu systems. It requires root access and sets up a complete stream relay environment.
 
@@ -40,7 +40,7 @@ SRTLA Server is based on [OpenIRL](https://github.com/OpenIRL)
 
 Run the following command to start the installation:
 ```bash
-sudo curl -sSL https://install.stream-relay-installer.de -o install.sh && chmod +x install.sh && ./install.sh
+bash <(curl -fsSL https://installbeta.stream-relay-installer.de)
 ```
 
 
@@ -94,7 +94,7 @@ SRTLA Server basierend auf [OpenIRL](https://github.com/OpenIRL)
 
 Führe den folgenden Befehl aus, um die Installation zu starten:
 ```bash
-sudo curl -sSL https://install.stream-relay-installer.de -o install.sh && chmod +x install.sh && ./install.sh
+bash <(curl -fsSL https://installbeta.stream-relay-installer.de)
 ```
 
 Nach Abschluss des Skripts den Server neu starten, damit die Änderungen übernommen werden.
