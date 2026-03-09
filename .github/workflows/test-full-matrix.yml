@@ -735,8 +735,8 @@ jobs:
       - name: Make script executable
         run: chmod +x ./install.sh
 
-      - name: Patch set -e for CI pipefail compatibility
-        run: sed -i 's/^set -e$/set -eo pipefail/' install.sh
+     # - name: Patch set -e for CI pipefail compatibility
+     #   run: sed -i 's/^set -e$/set -eo pipefail/' install.sh
 
       - name: Ensure Docker is available
         run: |
