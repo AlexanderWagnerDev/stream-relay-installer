@@ -1,0 +1,1420 @@
+name: Full Matrix Test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # ════════════════════════════════════════════
+  # JOB 1 – ShellCheck Lint
+  # ════════════════════════════════════════════
+  lint:
+    name: "Lint: ShellCheck"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+      - name: Run ShellCheck
+        run: shellcheck -e SC1091,SC2034,SC2162,SC2181,SC2155,SC2046,SC2086 install.sh
+
+  # ════════════════════════════════════════════
+  # JOB 2 – Install matrix (all variants)
+  # ════════════════════════════════════════════
+  install-matrix:
+    name: "Install [${{ matrix.arch }}/${{ matrix.lang }}] ${{ matrix.variant }}"
+    needs: lint
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+
+          # ────────────────────────────────────
+          # amd64 / English
+          # ────────────────────────────────────
+
+          # All services, no Docker install, no system update
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: all-no-docker-no-update
+            sys_update: "n"
+            docker_install: "n"
+            wud: "y"
+            wud_labels: "y"
+            rtmp: "y"
+            srtla: "y"
+            slspanel: "y"
+            slspanel_login: "y"
+
+          # All services + system update, no Docker install
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: all-with-update-no-docker
+            sys_update: "y"
+            docker_install: "n"
+            wud: "y"
+            wud_labels: "y"
+            rtmp: "y"
+            srtla: "y"
+            slspanel: "y"
+            slspanel_login: "y"
+
+          # All services + Docker install, no system update
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: all-with-docker-no-update
+            sys_update: "n"
+            docker_install: "y"
+            wud: "y"
+            wud_labels: "y"
+            rtmp: "y"
+            srtla: "y"
+            slspanel: "y"
+            slspanel_login: "y"
+
+          # All services + Docker install + system update
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: all-with-docker-and-update
+            sys_update: "y"
+            docker_install: "y"
+            wud: "y"
+            wud_labels: "y"
+            rtmp: "y"
+            srtla: "y"
+            slspanel: "y"
+            slspanel_login: "y"
+
+          # RTMP only
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: rtmp-only
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "y"
+            srtla: "n"
+            slspanel: "n"
+            slspanel_login: "n"
+
+          # SRTLA only
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: srtla-only
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "n"
+            srtla: "y"
+            slspanel: "n"
+            slspanel_login: "n"
+
+          # SLSPanel only (no login)
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: slspanel-only-no-login
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "n"
+            srtla: "n"
+            slspanel: "y"
+            slspanel_login: "n"
+
+          # RTMP + SRTLA only (no SLSPanel, no WUD)
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: rtmp-srtla-only
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "y"
+            srtla: "y"
+            slspanel: "n"
+            slspanel_login: "n"
+
+          # RTMP + SRTLA + SLSPanel without login, no WUD
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: all-no-wud-no-login
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "y"
+            srtla: "y"
+            slspanel: "y"
+            slspanel_login: "n"
+
+          # WUD only
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: wud-only
+            sys_update: "n"
+            docker_install: "n"
+            wud: "y"
+            wud_labels: "n"
+            rtmp: "n"
+            srtla: "n"
+            slspanel: "n"
+            slspanel_login: "n"
+
+          # ────────────────────────────────────
+          # amd64 / German
+          # ────────────────────────────────────
+
+          # All services, no Docker install, no system update
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: all-no-docker-no-update
+            sys_update: "n"
+            docker_install: "n"
+            wud: "j"
+            wud_labels: "j"
+            rtmp: "j"
+            srtla: "j"
+            slspanel: "j"
+            slspanel_login: "j"
+
+          # All services + system update, no Docker install
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: all-with-update-no-docker
+            sys_update: "j"
+            docker_install: "n"
+            wud: "j"
+            wud_labels: "j"
+            rtmp: "j"
+            srtla: "j"
+            slspanel: "j"
+            slspanel_login: "j"
+
+          # All services + Docker install, no system update
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: all-with-docker-no-update
+            sys_update: "n"
+            docker_install: "j"
+            wud: "j"
+            wud_labels: "j"
+            rtmp: "j"
+            srtla: "j"
+            slspanel: "j"
+            slspanel_login: "j"
+
+          # All services + Docker install + system update
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: all-with-docker-and-update
+            sys_update: "j"
+            docker_install: "j"
+            wud: "j"
+            wud_labels: "j"
+            rtmp: "j"
+            srtla: "j"
+            slspanel: "j"
+            slspanel_login: "j"
+
+          # RTMP only
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: rtmp-only
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "j"
+            srtla: "n"
+            slspanel: "n"
+            slspanel_login: "n"
+
+          # SRTLA only
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: srtla-only
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "n"
+            srtla: "j"
+            slspanel: "n"
+            slspanel_login: "n"
+
+          # SLSPanel only (no login)
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: slspanel-only-no-login
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "n"
+            srtla: "n"
+            slspanel: "j"
+            slspanel_login: "n"
+
+          # RTMP + SRTLA only (no SLSPanel, no WUD)
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: rtmp-srtla-only
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "j"
+            srtla: "j"
+            slspanel: "n"
+            slspanel_login: "n"
+
+          # RTMP + SRTLA + SLSPanel without login, no WUD
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: all-no-wud-no-login
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "j"
+            srtla: "j"
+            slspanel: "j"
+            slspanel_login: "n"
+
+          # WUD only
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: wud-only
+            sys_update: "n"
+            docker_install: "n"
+            wud: "j"
+            wud_labels: "n"
+            rtmp: "n"
+            srtla: "n"
+            slspanel: "n"
+            slspanel_login: "n"
+
+          # ────────────────────────────────────
+          # arm64 / English
+          # ────────────────────────────────────
+
+          # All services, no Docker install, no system update
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: all-no-docker-no-update
+            sys_update: "n"
+            docker_install: "n"
+            wud: "y"
+            wud_labels: "y"
+            rtmp: "y"
+            srtla: "y"
+            slspanel: "y"
+            slspanel_login: "y"
+
+          # All services + system update, no Docker install
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: all-with-update-no-docker
+            sys_update: "y"
+            docker_install: "n"
+            wud: "y"
+            wud_labels: "y"
+            rtmp: "y"
+            srtla: "y"
+            slspanel: "y"
+            slspanel_login: "y"
+
+          # All services + Docker install, no system update
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: all-with-docker-no-update
+            sys_update: "n"
+            docker_install: "y"
+            wud: "y"
+            wud_labels: "y"
+            rtmp: "y"
+            srtla: "y"
+            slspanel: "y"
+            slspanel_login: "y"
+
+          # All services + Docker install + system update
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: all-with-docker-and-update
+            sys_update: "y"
+            docker_install: "y"
+            wud: "y"
+            wud_labels: "y"
+            rtmp: "y"
+            srtla: "y"
+            slspanel: "y"
+            slspanel_login: "y"
+
+          # RTMP only
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: rtmp-only
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "y"
+            srtla: "n"
+            slspanel: "n"
+            slspanel_login: "n"
+
+          # SRTLA only
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: srtla-only
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "n"
+            srtla: "y"
+            slspanel: "n"
+            slspanel_login: "n"
+
+          # SLSPanel only (no login)
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: slspanel-only-no-login
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "n"
+            srtla: "n"
+            slspanel: "y"
+            slspanel_login: "n"
+
+          # RTMP + SRTLA only (no SLSPanel, no WUD)
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: rtmp-srtla-only
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "y"
+            srtla: "y"
+            slspanel: "n"
+            slspanel_login: "n"
+
+          # RTMP + SRTLA + SLSPanel without login, no WUD
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: all-no-wud-no-login
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "y"
+            srtla: "y"
+            slspanel: "y"
+            slspanel_login: "n"
+
+          # WUD only
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: wud-only
+            sys_update: "n"
+            docker_install: "n"
+            wud: "y"
+            wud_labels: "n"
+            rtmp: "n"
+            srtla: "n"
+            slspanel: "n"
+            slspanel_login: "n"
+
+          # ────────────────────────────────────
+          # arm64 / German
+          # ────────────────────────────────────
+
+          # All services, no Docker install, no system update
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: all-no-docker-no-update
+            sys_update: "n"
+            docker_install: "n"
+            wud: "j"
+            wud_labels: "j"
+            rtmp: "j"
+            srtla: "j"
+            slspanel: "j"
+            slspanel_login: "j"
+
+          # All services + system update, no Docker install
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: all-with-update-no-docker
+            sys_update: "j"
+            docker_install: "n"
+            wud: "j"
+            wud_labels: "j"
+            rtmp: "j"
+            srtla: "j"
+            slspanel: "j"
+            slspanel_login: "j"
+
+          # All services + Docker install, no system update
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: all-with-docker-no-update
+            sys_update: "n"
+            docker_install: "j"
+            wud: "j"
+            wud_labels: "j"
+            rtmp: "j"
+            srtla: "j"
+            slspanel: "j"
+            slspanel_login: "j"
+
+          # All services + Docker install + system update
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: all-with-docker-and-update
+            sys_update: "j"
+            docker_install: "j"
+            wud: "j"
+            wud_labels: "j"
+            rtmp: "j"
+            srtla: "j"
+            slspanel: "j"
+            slspanel_login: "j"
+
+          # RTMP only
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: rtmp-only
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "j"
+            srtla: "n"
+            slspanel: "n"
+            slspanel_login: "n"
+
+          # SRTLA only
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: srtla-only
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "n"
+            srtla: "j"
+            slspanel: "n"
+            slspanel_login: "n"
+
+          # SLSPanel only (no login)
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: slspanel-only-no-login
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "n"
+            srtla: "n"
+            slspanel: "j"
+            slspanel_login: "n"
+
+          # RTMP + SRTLA only (no SLSPanel, no WUD)
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: rtmp-srtla-only
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "j"
+            srtla: "j"
+            slspanel: "n"
+            slspanel_login: "n"
+
+          # RTMP + SRTLA + SLSPanel without login, no WUD
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: all-no-wud-no-login
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "j"
+            srtla: "j"
+            slspanel: "j"
+            slspanel_login: "n"
+
+          # WUD only
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: wud-only
+            sys_update: "n"
+            docker_install: "n"
+            wud: "j"
+            wud_labels: "n"
+            rtmp: "n"
+            srtla: "n"
+            slspanel: "n"
+            slspanel_login: "n"
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Make script executable
+        run: chmod +x ./install.sh
+
+      - name: Patch set -e for CI pipefail compatibility
+        run: sed -i 's/^set -e$/set -eo pipefail/' install.sh
+
+      - name: Ensure Docker is available
+        run: |
+          sudo systemctl start docker 2>/dev/null || true
+          docker info
+
+      # -- Variant: all-no-docker-no-update --------
+      - name: "Run install (all-no-docker-no-update)"
+        if: matrix.variant == 'all-no-docker-no-update'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          ${{ matrix.lang_input }}
+          1
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          ${{ matrix.wud }}
+          ${{ matrix.wud_labels }}
+          ${{ matrix.rtmp }}
+          ${{ matrix.srtla }}
+          ${{ matrix.slspanel }}
+          ${{ matrix.slspanel_login }}
+          admin
+          password
+          SCRIPT_EOF
+
+      # -- Variant: all-with-update-no-docker ------
+      - name: "Run install (all-with-update-no-docker)"
+        if: matrix.variant == 'all-with-update-no-docker'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          APT_LISTCHANGES_FRONTEND: none
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          ${{ matrix.lang_input }}
+          1
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          ${{ matrix.wud }}
+          ${{ matrix.wud_labels }}
+          ${{ matrix.rtmp }}
+          ${{ matrix.srtla }}
+          ${{ matrix.slspanel }}
+          ${{ matrix.slspanel_login }}
+          admin
+          password
+          SCRIPT_EOF
+
+      # -- Variant: all-with-docker-no-update ------
+      - name: "Run install (all-with-docker-no-update)"
+        if: matrix.variant == 'all-with-docker-no-update'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          ${{ matrix.lang_input }}
+          1
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          ${{ matrix.wud }}
+          ${{ matrix.wud_labels }}
+          ${{ matrix.rtmp }}
+          ${{ matrix.srtla }}
+          ${{ matrix.slspanel }}
+          ${{ matrix.slspanel_login }}
+          admin
+          password
+          SCRIPT_EOF
+
+      # -- Variant: all-with-docker-and-update -----
+      - name: "Run install (all-with-docker-and-update)"
+        if: matrix.variant == 'all-with-docker-and-update'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          APT_LISTCHANGES_FRONTEND: none
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          ${{ matrix.lang_input }}
+          1
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          ${{ matrix.wud }}
+          ${{ matrix.wud_labels }}
+          ${{ matrix.rtmp }}
+          ${{ matrix.srtla }}
+          ${{ matrix.slspanel }}
+          ${{ matrix.slspanel_login }}
+          admin
+          password
+          SCRIPT_EOF
+
+      # -- Variant: rtmp-only ----------------------
+      - name: "Run install (rtmp-only)"
+        if: matrix.variant == 'rtmp-only'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          ${{ matrix.lang_input }}
+          1
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          SCRIPT_EOF
+
+      # -- Variant: srtla-only ---------------------
+      - name: "Run install (srtla-only)"
+        if: matrix.variant == 'srtla-only'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          ${{ matrix.lang_input }}
+          1
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          SCRIPT_EOF
+
+      # -- Variant: slspanel-only-no-login ---------
+      - name: "Run install (slspanel-only-no-login)"
+        if: matrix.variant == 'slspanel-only-no-login'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          ${{ matrix.lang_input }}
+          1
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          SCRIPT_EOF
+
+      # -- Variant: rtmp-srtla-only ----------------
+      - name: "Run install (rtmp-srtla-only)"
+        if: matrix.variant == 'rtmp-srtla-only'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          ${{ matrix.lang_input }}
+          1
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          SCRIPT_EOF
+
+      # -- Variant: all-no-wud-no-login ------------
+      - name: "Run install (all-no-wud-no-login)"
+        if: matrix.variant == 'all-no-wud-no-login'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          ${{ matrix.lang_input }}
+          1
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          SCRIPT_EOF
+
+      # -- Variant: wud-only -----------------------
+      - name: "Run install (wud-only)"
+        if: matrix.variant == 'wud-only'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          ${{ matrix.lang_input }}
+          1
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          SCRIPT_EOF
+
+      # -- Assertions ------------------------------
+      - name: Assert containers running
+        run: |
+          echo "=== Running containers ==="
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
+          echo ""
+          VARIANT="${{ matrix.variant }}"
+          FAILED=0
+          check_container() {
+            local name="$1"
+            if docker ps --format '{{.Names}}' | grep -q "^${name}$"; then
+              echo "✅ $name is running"
+            else
+              echo "❌ $name is NOT running"
+              FAILED=1
+            fi
+          }
+          case "$VARIANT" in
+            all-no-docker-no-update|all-with-update-no-docker|all-with-docker-no-update|all-with-docker-and-update)
+              for c in rtmp-server srtla-server slspanel wud; do check_container "$c"; done ;;
+            rtmp-only)
+              check_container "rtmp-server" ;;
+            srtla-only)
+              check_container "srtla-server" ;;
+            slspanel-only-no-login)
+              check_container "slspanel" ;;
+            rtmp-srtla-only)
+              for c in rtmp-server srtla-server; do check_container "$c"; done ;;
+            all-no-wud-no-login)
+              for c in rtmp-server srtla-server slspanel; do check_container "$c"; done ;;
+            wud-only)
+              check_container "wud" ;;
+          esac
+          if [ "$FAILED" -ne 0 ]; then
+            echo ""
+            echo "=== Full container list for debugging ==="
+            docker ps -a
+            exit 1
+          fi
+
+      - name: Assert .apikey exists (SRTLA variants)
+        if: |
+          matrix.variant == 'all-no-docker-no-update' ||
+          matrix.variant == 'all-with-update-no-docker' ||
+          matrix.variant == 'all-with-docker-no-update' ||
+          matrix.variant == 'all-with-docker-and-update' ||
+          matrix.variant == 'srtla-only' ||
+          matrix.variant == 'rtmp-srtla-only' ||
+          matrix.variant == 'all-no-wud-no-login'
+        run: |
+          sleep 8
+          if [ -f ".apikey" ]; then
+            KEY=$(cat .apikey)
+            if [ -n "$KEY" ]; then
+              echo "✅ .apikey exists and is non-empty (${#KEY} chars)"
+            else
+              echo "⚠️  .apikey exists but is empty"
+            fi
+          else
+            echo "⚠️  .apikey not found (Container evtl. container may still be initializing)"
+          fi
+
+      - name: Container health summary
+        run: |
+          echo "=== Container Health ==="
+          for cname in rtmp-server srtla-server slspanel wud; do
+            if docker ps --format '{{.Names}}' | grep -q "^${cname}$"; then
+              STATUS=$(docker inspect --format='{{.State.Status}}' "$cname" 2>/dev/null || echo "unknown")
+              HEALTH=$(docker inspect --format='{{.State.Health.Status}}' "$cname" 2>/dev/null || echo "no healthcheck")
+              echo "  ✅ $cname → status=$STATUS, health=$HEALTH"
+            fi
+          done
+
+      - name: Show container logs on failure
+        if: failure()
+        run: |
+          echo "=== Container Logs ==="
+          for cname in rtmp-server srtla-server slspanel wud; do
+            if docker ps -a --format '{{.Names}}' | grep -q "^${cname}$"; then
+              echo "--- $cname ---"
+              docker logs --tail 50 "$cname" 2>&1 || true
+            fi
+          done
+
+  # ════════════════════════════════════════════
+  # JOB 3 – Lifecycle (stop/start/update/uninstall)
+  # ════════════════════════════════════════════
+  lifecycle:
+    name: "Lifecycle [${{ matrix.arch }}/${{ matrix.lang }}] ${{ matrix.action }}"
+    needs: lint
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # amd64 / en
+          - arch: amd64
+            runner: ubuntu-latest
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            action: stop
+          - arch: amd64
+            runner: ubuntu-latest
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            action: start
+          - arch: amd64
+            runner: ubuntu-latest
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            action: update
+          - arch: amd64
+            runner: ubuntu-latest
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            action: uninstall-keep-volumes
+          - arch: amd64
+            runner: ubuntu-latest
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            action: uninstall-remove-volumes
+          # amd64 / de
+          - arch: amd64
+            runner: ubuntu-latest
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            action: stop
+          - arch: amd64
+            runner: ubuntu-latest
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            action: start
+          - arch: amd64
+            runner: ubuntu-latest
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            action: update
+          - arch: amd64
+            runner: ubuntu-latest
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            action: uninstall-keep-volumes
+          - arch: amd64
+            runner: ubuntu-latest
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            action: uninstall-remove-volumes
+          # arm64 / en
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            action: stop
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            action: start
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            action: update
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            action: uninstall-keep-volumes
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            action: uninstall-remove-volumes
+          # arm64 / de
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            action: stop
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            action: start
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            action: update
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            action: uninstall-keep-volumes
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            action: uninstall-remove-volumes
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Make script executable & patch set -e
+        run: |
+          chmod +x ./install.sh
+          sed -i 's/^set -e$/set -eo pipefail/' install.sh
+
+      - name: Ensure Docker is available
+        run: |
+          sudo systemctl start docker 2>/dev/null || true
+          docker info
+
+      - name: Pre-install all services (lifecycle test base)
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          ${{ matrix.lang_input }}
+          1
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
+          admin
+          password
+          SCRIPT_EOF
+
+      - name: Wait for containers to be ready
+        run: sleep 10
+
+      # ── Action: stop ─────────────────────────
+      - name: "Lifecycle: stop"
+        if: matrix.action == 'stop'
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          ${{ matrix.lang_input }}
+          3
+          SCRIPT_EOF
+          echo "=== Containers after stop ==="
+          docker ps -a --format "table {{.Names}}\t{{.Status}}"
+          FAILED=0
+          for c in rtmp-server srtla-server slspanel; do
+            STATUS=$(docker inspect --format='{{.State.Status}}' "$c" 2>/dev/null || echo "missing")
+            if [ "$STATUS" = "exited" ] || [ "$STATUS" = "missing" ]; then
+              echo "✅ $c is stopped ($STATUS)"
+            else
+              echo "❌ $c is still running! ($STATUS)"
+              FAILED=1
+            fi
+          done
+          exit $FAILED
+
+      # ── Action: start ────────────────────────
+      - name: "Lifecycle: start (stop first, then start)"
+        if: matrix.action == 'start'
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          ${{ matrix.lang_input }}
+          3
+          SCRIPT_EOF
+          sleep 3
+          ./install.sh <<'SCRIPT_EOF'
+          ${{ matrix.lang_input }}
+          2
+          SCRIPT_EOF
+          sleep 5
+          echo "=== Containers after start ==="
+          docker ps --format "table {{.Names}}\t{{.Status}}"
+          FAILED=0
+          for c in rtmp-server srtla-server slspanel; do
+            if docker ps --format '{{.Names}}' | grep -q "^${c}$"; then
+              echo "✅ $c is running"
+            else
+              echo "❌ $c is NOT running after start"
+              FAILED=1
+            fi
+          done
+          exit $FAILED
+
+      # ── Action: update ───────────────────────
+      - name: "Lifecycle: update"
+        if: matrix.action == 'update'
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          ${{ matrix.lang_input }}
+          4
+          SCRIPT_EOF
+          echo "=== Containers after update ==="
+          docker ps --format "table {{.Names}}\t{{.Status}}"
+          FAILED=0
+          for c in rtmp-server srtla-server slspanel; do
+            if docker ps --format '{{.Names}}' | grep -q "^${c}$"; then
+              echo "✅ $c is running after update"
+            else
+              echo "❌ $c is NOT running after update"
+              FAILED=1
+            fi
+          done
+          exit $FAILED
+
+      # ── Action: uninstall-keep-volumes ───────
+      - name: "Lifecycle: uninstall (keep volumes)"
+        if: matrix.action == 'uninstall-keep-volumes'
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          ${{ matrix.lang_input }}
+          5
+          ${{ matrix.no }}
+          SCRIPT_EOF
+          echo "=== Containers after uninstall ==="
+          docker ps -a
+          docker volume ls
+          if docker volume ls | grep -q "srtla-server"; then
+            echo "✅ Volume srtla-server still exists (correct)"
+          else
+            echo "ℹ️  Volume srtla-server not found"
+          fi
+
+      # ── Action: uninstall-remove-volumes ─────
+      - name: "Lifecycle: uninstall (remove volumes)"
+        if: matrix.action == 'uninstall-remove-volumes'
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          ${{ matrix.lang_input }}
+          5
+          ${{ matrix.yes }}
+          SCRIPT_EOF
+          echo "=== Containers after uninstall ==="
+          docker ps -a
+          docker volume ls
+          if docker volume ls | grep -q "srtla-server"; then
+            echo "❌ Volume srtla-server still exists but should be removed!"
+            exit 1
+          else
+            echo "✅ Volume srtla-server was removed (correct)"
+          fi
+
+      - name: Show logs on failure
+        if: failure()
+        run: |
+          for cname in rtmp-server srtla-server slspanel wud; do
+            if docker ps -a --format '{{.Names}}' | grep -q "^${cname}$"; then
+              echo "--- $cname ---"
+              docker logs --tail 50 "$cname" 2>&1 || true
+            fi
+          done
+
+  # ════════════════════════════════════════════
+  # JOB 4 – Help
+  # ════════════════════════════════════════════
+  help-test:
+    name: "Help [${{ matrix.arch }}/${{ matrix.lang }}]"
+    needs: lint
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 5
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+            lang_input: "2"
+            lang: en
+          - arch: amd64
+            runner: ubuntu-latest
+            lang_input: "1"
+            lang: de
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang_input: "2"
+            lang: en
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang_input: "1"
+            lang: de
+
+    steps:
+      - uses: actions/checkout@v6
+      - name: Make script executable & patch set -e
+        run: |
+          chmod +x ./install.sh
+          sed -i 's/^set -e$/set -eo pipefail/' install.sh
+      - name: Run help
+        run: |
+          OUTPUT=$(./install.sh <<'SCRIPT_EOF'
+          ${{ matrix.lang_input }}
+          6
+          SCRIPT_EOF
+          )
+          echo "$OUTPUT"
+          if echo "$OUTPUT" | grep -qi "install\|installieren"; then
+            echo "✅ Help output contains expected keywords"
+          else
+            echo "❌ Help output missing expected keywords"
+            exit 1
+          fi
+
+  # ════════════════════════════════════════════
+  # JOB 5 – Summary
+  # ════════════════════════════════════════════
+  summary:
+    name: "Test Summary"
+    needs: [lint, install-matrix, lifecycle, help-test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print result
+        run: |
+          echo "lint:            ${{ needs.lint.result }}"
+          echo "install-matrix:  ${{ needs.install-matrix.result }}"
+          echo "lifecycle:       ${{ needs.lifecycle.result }}"
+          echo "help-test:       ${{ needs.help-test.result }}"
+          FAILED=0
+          [ "${{ needs.lint.result }}" = "failure" ] && FAILED=1
+          [ "${{ needs.install-matrix.result }}" = "failure" ] && FAILED=1
+          [ "${{ needs.lifecycle.result }}" = "failure" ] && FAILED=1
+          [ "${{ needs.help-test.result }}" = "failure" ] && FAILED=1
+          if [ "$FAILED" -ne 0 ]; then
+            echo "❌ At least one job failed."
+            exit 1
+          else
+            echo "✅ All jobs succeeded."
+          fi
