@@ -635,6 +635,7 @@ if [[ "$mainaction" == "1" ]]; then
       docker run -d --name rtmp-server --restart unless-stopped \
         --label "wud.watch=true" \
         --label "wud.watch.digest=true" \
+        --label "wud.tag.include=^beta$" \
         -p "${rtmp_stats_port}":80/tcp -p "${rtmp_port}":1935/tcp \
         alexanderwagnerdev/rtmp-server:beta
     else
@@ -664,6 +665,7 @@ if [[ "$mainaction" == "1" ]]; then
       docker run -d --name srtla-server --restart unless-stopped \
         --label "wud.watch=true" \
         --label "wud.watch.digest=true" \
+        --label "wud.tag.include=^beta$" \
         -v /var/lib/docker/volumes/srtla-server/_data:/var/lib/sls \
         -p "${srt_player_port}":4000/udp -p "${srt_sender_port}":4001/udp -p "${srtla_port}":5000/udp -p "${sls_stats_port}":8080/tcp \
         alexanderwagnerdev/srtla-server:beta
@@ -766,6 +768,7 @@ if [[ "$mainaction" == "1" ]]; then
         docker run -d --name slspanel --restart unless-stopped \
           --label "wud.watch=true" \
           --label "wud.watch.digest=true" \
+          --label "wud.tag.include=^beta$" \
           -e REQUIRE_LOGIN=True \
           -e WEB_USERNAME="${slspanel_username}" \
           -e WEB_PASSWORD="${slspanel_password}" \
@@ -800,6 +803,7 @@ if [[ "$mainaction" == "1" ]]; then
         docker run -d --name slspanel --restart unless-stopped \
           --label "wud.watch=true" \
           --label "wud.watch.digest=true" \
+          --label "wud.tag.include=^beta$" \
           -e REQUIRE_LOGIN=False \
           -e SLS_API_URL="${slspanel_api_url}" \
           -e SLS_API_KEY="${apikey}" \
