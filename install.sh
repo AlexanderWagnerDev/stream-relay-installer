@@ -18,7 +18,7 @@ function print_ascii_art_de() {
  / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \ ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
- |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
+ |____/ \__|_|  \___|\_,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
                                                          |___/                                                                                                                   
            von AlexanderWagnerDev
 EOF
@@ -30,7 +30,7 @@ function print_ascii_art_en() {
  / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \ ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
- |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
+ |____/ \__|_|  \___|\_,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
                                                          |___/                                                                                                                                                
            by AlexanderWagnerDev
 EOF
@@ -90,7 +90,6 @@ function install_docker_debian_ubuntu() {
 function read_port () {
   local prompt="$1"
   local default_port="$2"
-  local lang="$3"
   local response
   echo -n "$prompt [$default_port]: "
   read -r response
@@ -554,13 +553,13 @@ if [[ "$mainaction" == "1" ]]; then
     rtmp_port=1935
     slspanel_port=8000
   else
-    srt_player_port=$(read_port "${port_prompts[0]}" 4000 "$lang")
-    srt_sender_port=$(read_port "${port_prompts[1]}" 4001 "$lang")
-    srtla_port=$(read_port "${port_prompts[2]}" 5000 "$lang")
-    sls_stats_port=$(read_port "${port_prompts[3]}" 8789 "$lang")
-    rtmp_stats_port=$(read_port "${port_prompts[4]}" 8090 "$lang")
-    rtmp_port=$(read_port "${port_prompts[5]}" 1935 "$lang")
-    slspanel_port=$(read_port "${port_prompts[6]}" 8000 "$lang")
+    srt_player_port=$(read_port "${port_prompts[0]}" 4000)
+    srt_sender_port=$(read_port "${port_prompts[1]}" 4001)
+    srtla_port=$(read_port "${port_prompts[2]}" 5000)
+    sls_stats_port=$(read_port "${port_prompts[3]}" 8789)
+    rtmp_stats_port=$(read_port "${port_prompts[4]}" 8090)
+    rtmp_port=$(read_port "${port_prompts[5]}" 1935)
+    slspanel_port=$(read_port "${port_prompts[6]}" 8000)
   fi
 
   MANUAL_IP=""
@@ -693,18 +692,6 @@ if [[ "$mainaction" == "1" ]]; then
     echo -e "$wud_skip_msg"
   fi
 
-  if [[ "$lang" == "de" ]]; then
-    slspanel_install_prompt="SLSPanel installieren und starten? (j/n): "
-    slspanel_login_prompt="Login fuer SLSPanel aktivieren? (j/n): "
-    slspanel_username_prompt="Benutzername fuer SLSPanel Admin: "
-    slspanel_password_prompt="Passwort fuer SLSPanel Admin: "
-  else
-    slspanel_install_prompt="Install and start SLSPanel? (y/n): "
-    slspanel_login_prompt="Enable login for SLSPanel? (y/n): "
-    slspanel_username_prompt="Username for SLSPanel admin: "
-    slspanel_password_prompt="Password for SLSPanel admin: "
-  fi
-
   read -rp "$slspanel_install_prompt" install_slspanel
   install_slspanel=${install_slspanel:-n}
   if [[ "$install_slspanel" =~ ^[JjYy] ]]; then
@@ -729,8 +716,17 @@ if [[ "$mainaction" == "1" ]]; then
     fi
 
     slspanel_api_url="http://${public_ip}:${sls_stats_port}"
-    apikey=$(cat .apikey 2>/dev/null || echo your_api_key)
+    apikey=$(cat .apikey 2>/dev/null || echo "")
+    if [[ -z "$apikey" ]]; then
+      if [[ "$lang" == "de" ]]; then
+        echo -e "${ERROR}Warnung: .apikey nicht gefunden. SLSPanel wird ohne gueltigen API-Key gestartet.${NC}"
+      else
+        echo -e "${ERROR}Warning: .apikey not found. SLSPanel will start without a valid API key.${NC}"
+      fi
+    fi
     TZ=$(cat /etc/timezone 2>/dev/null || timedatectl show --property=Timezone --value 2>/dev/null || echo UTC)
+
+    docker_pull_fallback "alexanderwagnerdev/slspanel:latest" "ghcr.io/alexanderwagnerdev/slspanel:latest"
 
     if [[ "$enable_login" =~ ^[JjYy] ]]; then
       if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
