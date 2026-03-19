@@ -19,7 +19,7 @@ function print_ascii_art_de() {
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
  |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
-                                                         |___/                                                                                                                   
+                                                         |___/                                                                                                                                                          
            von AlexanderWagnerDev
 EOF
 }
@@ -31,7 +31,7 @@ function print_ascii_art_en() {
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
  |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
-                                                         |___/                                                                                                                                                
+                                                         |___/                                                                                                                                                                                       
            by AlexanderWagnerDev
 EOF
 }
@@ -302,7 +302,6 @@ function recreate_container() {
     restart_flag="--restart always"
   fi
 
-  # shellcheck disable=SC2086
   if ! docker run -d --name "$cname" $restart_flag "${run_args[@]}" "$image"; then
     [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname konnte nicht gestartet werden.${NC}" || echo -e "${ERROR}Failed to start container $cname.${NC}"
     return 1
