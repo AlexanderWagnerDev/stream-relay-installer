@@ -237,84 +237,57 @@ function start_services() {
   done
 }
 
-function get_container_config() {
-  local cname="$1"
-  docker inspect "$cname" 2>/dev/null || echo "{}"
-}
-
 function recreate_container() {
   local cname="$1"
   local image="$2"
   local fallback_image="$3"
-  
+
   if ! docker ps -a --format '{{.Names}}' | grep -q "^$cname$"; then
     [[ "$lang" == "de" ]] && echo -e "${INFO}Container $cname existiert nicht, überspringe...${NC}" || echo -e "${INFO}Container $cname does not exist, skipping...${NC}"
     return 0
   fi
-  
+
   [[ "$lang" == "de" ]] && echo -e "${INFO}Aktualisiere Container: $cname${NC}" || echo -e "${INFO}Updating container: $cname${NC}"
-  
-  local config
-  config=$(get_container_config "$cname")
-  
+
+  # Read restart policy via docker inspect --format
   local restart_policy
-  restart_policy=$(echo "$config" | grep -o '"RestartPolicy":{[^}]*}' | grep -o '"Name":"[^"]*"' | cut -d'"' -f4)
-  
+  restart_policy=$(docker inspect "$cname" --format '{{.HostConfig.RestartPolicy.Name}}' 2>/dev/null || echo "")
+
+  # Build port args via docker inspect --format (Go template iterates PortBindings map)
   local ports_args=""
-  local ports
-  ports=$(echo "$config" | grep -o '"PortBindings":{[^}]*}' | sed 's/"PortBindings"://g')
-  
-  if [[ -n "$ports" ]]; then
-    while IFS= read -r line; do
-      if [[ "$line" =~ \"([0-9]+)/([a-z]+)\" ]]; then
-        port="${BASH_REMATCH[1]}"
-        proto="${BASH_REMATCH[2]}"
-        host_port=$(echo "$line" | grep -o '"HostPort":"[0-9]*"' | cut -d'"' -f4)
-        if [[ -n "$host_port" ]]; then
-          ports_args="$ports_args -p ${host_port}:${port}/${proto}"
-        fi
-      fi
-    done <<< "$ports"
-  fi
-  
+  while IFS= read -r port_entry; do
+    [[ -n "$port_entry" ]] && ports_args="$ports_args -p $port_entry"
+  done < <(docker inspect "$cname" --format \
+    '{{range $p, $confs := .HostConfig.PortBindings}}{{range $confs}}{{.HostPort}}:{{$p}} {{end}}{{end}}' \
+    2>/dev/null | tr ' ' '\n' | grep -v '^$')
+
+  # Build env args, skip PATH and HOME
   local env_args=""
-  local envs
-  envs=$(echo "$config" | grep -o '"Env":\[[^]]*\]' | sed 's/"Env"://g' | tr -d '[]"' | tr ',' '\n')
-  
-  while IFS= read -r env; do
-    if [[ -n "$env" && "$env" != "PATH="* && "$env" != "HOME="* ]]; then
-      env_args="$env_args -e \"$env\""
+  while IFS= read -r env_entry; do
+    if [[ -n "$env_entry" && "$env_entry" != PATH=* && "$env_entry" != HOME=* ]]; then
+      env_args="$env_args -e \"$env_entry\""
     fi
-  done <<< "$envs"
-  
+  done < <(docker inspect "$cname" --format \
+    '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null)
+
+  # Build volume args via docker inspect --format
   local volumes_args=""
-  local mounts
-  mounts=$(echo "$config" | grep -o '"Mounts":\[[^]]*\]' | sed 's/"Mounts":\[//g' | sed 's/\]$//g')
-  
-  if [[ -n "$mounts" ]]; then
-    while IFS= read -r mount; do
-      if [[ "$mount" =~ \"Source\":\"([^\"]+)\".*\"Destination\":\"([^\"]+)\" ]]; then
-        src="${BASH_REMATCH[1]}"
-        dst="${BASH_REMATCH[2]}"
-        volumes_args="$volumes_args -v \"$src:$dst\""
-      fi
-    done <<< "$mounts"
-  fi
-  
+  while IFS= read -r vol_entry; do
+    [[ -n "$vol_entry" ]] && volumes_args="$volumes_args -v $vol_entry"
+  done < <(docker inspect "$cname" --format \
+    '{{range .Mounts}}{{.Source}}:{{.Destination}} {{end}}' \
+    2>/dev/null | tr ' ' '\n' | grep -v '^$')
+
+  # Build wud label args
   local labels_args=""
-  local labels
-  labels=$(echo "$config" | grep -o '"Labels":{[^}]*}' | sed 's/"Labels"://g' | tr -d '{}' | tr ',' '\n')
-  
-  while IFS= read -r label; do
-    if [[ -n "$label" && "$label" =~ \"([^\"]+)\":\"([^\"]+)\" ]]; then
-      key="${BASH_REMATCH[1]}"
-      val="${BASH_REMATCH[2]}"
-      if [[ "$key" == "wud."* ]]; then
-        labels_args="$labels_args --label \"$key=$val\""
-      fi
+  while IFS= read -r label_entry; do
+    if [[ -n "$label_entry" && "$label_entry" == wud.* ]]; then
+      labels_args="$labels_args --label \"$label_entry\""
     fi
-  done <<< "$labels"
-  
+  done < <(docker inspect "$cname" --format \
+    '{{range $k, $v := .Config.Labels}}{{$k}}={{$v}} {{end}}' \
+    2>/dev/null | tr ' ' '\n' | grep -v '^$')
+
   docker stop "$cname" 2>/dev/null || true
   docker rm "$cname" 2>/dev/null || true
 
@@ -327,39 +300,39 @@ function recreate_container() {
   local fallback_base
   fallback_base=$(echo "$fallback_image" | cut -d':' -f1)
   docker images --format "{{.Repository}}:{{.Tag}}" | grep "^${fallback_base}:" | xargs -r docker rmi -f 2>/dev/null || true
-  
+
   docker_pull_fallback "$image" "$fallback_image"
-  
+
   local restart_flag=""
   if [[ "$restart_policy" == "unless-stopped" ]]; then
     restart_flag="--restart unless-stopped"
   elif [[ "$restart_policy" == "always" ]]; then
     restart_flag="--restart always"
   fi
-  
+
   local run_cmd="docker run -d --name $cname $restart_flag $ports_args $env_args $volumes_args $labels_args $image"
-  
+
   eval "$run_cmd"
-  
+
   [[ "$lang" == "de" ]] && echo -e "${SUCCESS}Container $cname wurde neu erstellt.${NC}" || echo -e "${SUCCESS}Container $cname has been recreated.${NC}"
-  
+
   sleep 3
   health_check "$cname"
 }
 
 function update_services() {
   [[ "$lang" == "de" ]] && echo -e "${HEADER}=== Container-Update wird gestartet ===${NC}" || echo -e "${HEADER}=== Starting container update ===${NC}"
-  
+
   local containers=("rtmp-server" "srtla-server" "slspanel" "wud")
   local images=("alexanderwagnerdev/rtmp-server:latest" "alexanderwagnerdev/srtla-server:latest" "alexanderwagnerdev/slspanel:latest" "getwud/wud:latest")
   local fallback_images=("ghcr.io/alexanderwagnerdev/rtmp-server:latest" "ghcr.io/alexanderwagnerdev/srtla-server:latest" "ghcr.io/alexanderwagnerdev/slspanel:latest" "ghcr.io/getwud/wud:latest")
-  
+
   for i in "${!containers[@]}"; do
     recreate_container "${containers[$i]}" "${images[$i]}" "${fallback_images[$i]}"
   done
-  
+
   [[ "$lang" == "de" ]] && echo -e "${SUCCESS}=== Container-Update abgeschlossen ===${NC}" || echo -e "${SUCCESS}=== Container update completed ===${NC}"
-  
+
   if docker ps -a --format '{{.Names}}' | grep -q "^srtla-server$"; then
     local apikey
     apikey=$(cat .apikey 2>/dev/null || echo "")
@@ -386,7 +359,7 @@ function uninstall_services() {
     docker rmi -f "$img" 2>/dev/null || true
     docker rmi -f "ghcr.io/$img" 2>/dev/null || true
   done
-  
+
   if [ -f ".apikey" ]; then
     rm -f ".apikey"
     if [[ "$lang" == "de" ]]; then
@@ -395,7 +368,7 @@ function uninstall_services() {
       echo -e "${SUCCESS}API key file (.apikey) deleted.${NC}"
     fi
   fi
-  
+
   if [[ "$lang" == "de" ]]; then
     read -rp $'\033[1;33mSollen auch Volumes gelöscht werden? (j/n):\033[0m ' rmvol
     if [[ "$rmvol" =~ ^[Jj] ]]; then
@@ -619,7 +592,7 @@ if [[ "$mainaction" == "1" ]]; then
 
   read -rp "$wud_prompt " install_wud
   install_wud=${install_wud:-n}
-  
+
   use_wud_labels="n"
   if [[ "$install_wud" =~ ^[JjYy] ]]; then
     read -rp "$wud_labels_prompt " use_wud_labels
@@ -631,7 +604,7 @@ if [[ "$mainaction" == "1" ]]; then
   if [[ "$install_rtmp" =~ ^[JjYy] ]]; then
     echo -e "$rtmp_install_msg"
     docker_pull_fallback "alexanderwagnerdev/rtmp-server:latest" "ghcr.io/alexanderwagnerdev/rtmp-server:latest"
-    
+
     if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
       docker run -d --name rtmp-server --restart unless-stopped \
         --label "wud.watch=true" \
@@ -644,7 +617,7 @@ if [[ "$mainaction" == "1" ]]; then
         -p "${rtmp_stats_port}":80/tcp -p "${rtmp_port}":1935/tcp \
         alexanderwagnerdev/rtmp-server:latest
     fi
-    
+
     health_check rtmp-server
   else
     echo -e "$rtmp_skip_msg"
@@ -661,7 +634,7 @@ if [[ "$mainaction" == "1" ]]; then
     sudo chown -R 3001:3001 "$volume_data_path"
     sudo chmod -R 755 "$volume_data_path"
     docker_pull_fallback "alexanderwagnerdev/srtla-server:latest" "ghcr.io/alexanderwagnerdev/srtla-server:latest"
-    
+
     if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
       docker run -d --name srtla-server --restart unless-stopped \
         --label "wud.watch=true" \
@@ -676,7 +649,7 @@ if [[ "$mainaction" == "1" ]]; then
         -p "${srt_player_port}":4000/udp -p "${srt_sender_port}":4001/udp -p "${srtla_port}":5000/udp -p "${sls_stats_port}":8080/tcp \
         alexanderwagnerdev/srtla-server:latest
     fi
-    
+
     health_check srtla-server
 
     if [ ! -f ".apikey" ]; then
