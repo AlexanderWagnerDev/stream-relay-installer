@@ -18,7 +18,7 @@ function print_ascii_art_de() {
  / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \ ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
- |____/ \__|_|  \___|\_,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
+ |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
                                                          |___/                                                                                                                   
            von AlexanderWagnerDev
 EOF
@@ -30,7 +30,7 @@ function print_ascii_art_en() {
  / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \ ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
- |____/ \__|_|  \___|\_,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
+ |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
                                                          |___/                                                                                                                                                
            by AlexanderWagnerDev
 EOF
@@ -410,8 +410,8 @@ if [[ "$lang" == "de" ]]; then
   use_default_ports_prompt="Standardports verwenden? (j/n):"
   manual_ip_prompt="Moechtest du eine Domain oder IP manuell eingeben? (j/n):"
   enter_ip_prompt="Bitte Domain oder IP eingeben:"
-  slspanel_install_prompt="SLSPanel installieren und starten? (j/n):"
-  slspanel_login_prompt="Login fuer SLSPanel aktivieren? (j/n):"
+  slspanel_install_prompt="SLSPanel installieren und starten? (j/n): "
+  slspanel_login_prompt="Login fuer SLSPanel aktivieren? (j/n): "
   slspanel_username_prompt="Benutzername fuer SLSPanel Admin: "
   slspanel_password_prompt="Passwort fuer SLSPanel Admin: "
   done_msg="Setup abgeschlossen."
@@ -445,8 +445,8 @@ else
   use_default_ports_prompt="Use default ports? (y/n):"
   manual_ip_prompt="Do you want to enter a domain or IP manually? (y/n):"
   enter_ip_prompt="Please enter the domain or IP:"
-  slspanel_install_prompt="Install and start SLSPanel? (y/n):"
-  slspanel_login_prompt="Enable login for SLSPanel? (y/n):"
+  slspanel_install_prompt="Install and start SLSPanel? (y/n): "
+  slspanel_login_prompt="Enable login for SLSPanel? (y/n): "
   slspanel_username_prompt="Username for SLSPanel admin: "
   slspanel_password_prompt="Password for SLSPanel admin: "
   done_msg="Setup completed."
@@ -719,9 +719,9 @@ if [[ "$mainaction" == "1" ]]; then
     apikey=$(cat .apikey 2>/dev/null || echo "")
     if [[ -z "$apikey" ]]; then
       if [[ "$lang" == "de" ]]; then
-        echo -e "${ERROR}Warnung: .apikey nicht gefunden. SLSPanel wird ohne gueltigen API-Key gestartet.${NC}"
+        echo -e "${YELLOW}Warnung: Kein API-Key gefunden (.apikey). SLSPanel wird ohne gueltigen API-Key gestartet.${NC}"
       else
-        echo -e "${ERROR}Warning: .apikey not found. SLSPanel will start without a valid API key.${NC}"
+        echo -e "${YELLOW}Warning: No API key found (.apikey). SLSPanel will start without a valid API key.${NC}"
       fi
     fi
     TZ=$(cat /etc/timezone 2>/dev/null || timedatectl show --property=Timezone --value 2>/dev/null || echo UTC)
