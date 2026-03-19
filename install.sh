@@ -18,7 +18,7 @@ function print_ascii_art_de() {
  / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \ ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
- |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
+ |____/ \__|_|  \___|\_,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
                                                          |___/                                                                                                                   
            von AlexanderWagnerDev
 EOF
@@ -30,7 +30,7 @@ function print_ascii_art_en() {
  / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \ ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
- |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
+ |____/ \__|_|  \___|\_,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
                                                          |___/                                                                                                                                                
            by AlexanderWagnerDev
 EOF
@@ -130,10 +130,12 @@ function docker_pull_fallback() {
     if ! docker pull "$fallback_image" 2>/dev/null; then
       if [[ "$lang" == "de" ]]; then
         echo -e "${RED}Fehler: Image konnte weder von Docker Hub noch GHCR gezogen werden: $image / $fallback_image${NC}"
+        echo -e "${RED}Das Script wird abgebrochen. Bitte Internetverbindung und Image-Namen pruefen.${NC}"
       else
         echo -e "${RED}Error: Image could not be pulled from Docker Hub nor GHCR: $image / $fallback_image${NC}"
+        echo -e "${RED}Aborting script. Please check your internet connection and image names.${NC}"
       fi
-      return 1
+      exit 1
     fi
   fi
 }
@@ -737,7 +739,7 @@ if [[ "$mainaction" == "1" ]]; then
         echo -e "${YELLOW}Warning: No API key found (.apikey). SLSPanel will start without a valid API key.${NC}"
       fi
     fi
-    TZ=$(cat /etc/timezone 2>/dev/null || timedatectl show --property=Timezone --value 2>/dev/null || echo UTC)
+    TZ=$(cat /etc/timezone 2>/dev/null | grep -v '^$' || timedatectl show --property=Timezone --value 2>/dev/null || echo UTC)
 
     docker_pull_fallback "alexanderwagnerdev/slspanel:latest" "ghcr.io/alexanderwagnerdev/slspanel:latest"
 
