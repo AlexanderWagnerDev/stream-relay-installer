@@ -252,7 +252,6 @@ function recreate_container() {
   local restart_policy
   restart_policy=$(docker inspect "$cname" --format '{{.HostConfig.RestartPolicy.Name}}' 2>/dev/null || echo "")
 
-  # Collect ports, envs, volumes, labels into arrays to avoid eval and quoting issues
   local -a run_args=()
 
   while IFS= read -r port_entry; do
