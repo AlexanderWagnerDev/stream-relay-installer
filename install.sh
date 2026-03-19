@@ -19,7 +19,7 @@ function print_ascii_art_de() {
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
  |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
-                                                         |___/                                                                                                                                                          
+                                                         |___/                                                                                                                   
            von AlexanderWagnerDev
 EOF
 }
@@ -31,7 +31,7 @@ function print_ascii_art_en() {
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
  |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
-                                                         |___/                                                                                                                                                                                       
+                                                         |___/                                                                                                                                                
            by AlexanderWagnerDev
 EOF
 }
@@ -121,17 +121,13 @@ function get_public_ip() {
 function docker_pull_fallback() {
   local image="$1"
   local fallback_image="$2"
-  if docker pull "$image"; then
-    return 0
-  else
+  if ! docker pull "$image" 2>/dev/null; then
     if [[ "$lang" == "de" ]]; then
       echo -e "${YELLOW}Warnung: Image '$image' nicht von Docker Hub gefunden, versuche Fallback GHCR...${NC}"
     else
       echo -e "${YELLOW}Warning: Image '$image' not found on Docker Hub, trying fallback GHCR...${NC}"
     fi
-    if docker pull "$fallback_image"; then
-      return 0
-    else
+    if ! docker pull "$fallback_image" 2>/dev/null; then
       if [[ "$lang" == "de" ]]; then
         echo -e "${RED}Fehler: Image konnte weder von Docker Hub noch GHCR gezogen werden: $image / $fallback_image${NC}"
       else
@@ -152,28 +148,35 @@ function print_available_services() {
   local app_url="$1"
   local management_port="$2"
   local apikey="$3"
+  local p_public_ip="$4"
+  local p_srtla_port="$5"
+  local p_srt_sender_port="$6"
+  local p_srt_player_port="$7"
+  local p_sls_stats_port="$8"
+  local p_rtmp_stats_port="$9"
+  local p_rtmp_port="${10}"
   if [[ "$lang" == "de" ]]; then
     echo -e "${HEADER}Verfuegbare Dienste:${NC}"
-    echo -e "${SUCCESS}SLSPanel UI: http://${public_ip}:${management_port}${NC}"
+    echo -e "${SUCCESS}SLSPanel UI: http://${p_public_ip}:${management_port}${NC}"
     echo -e "${SUCCESS}API Key: ${apikey}${NC}"
     echo -e "${SUCCESS}Backend API: ${app_url}${NC}"
-    echo -e "${SUCCESS}SRTLA Sender URL ZUM SENDEN (Beispiel): srtla://${public_ip}:${srtla_port}?streamid=livekey${NC}"
-    echo -e "${SUCCESS}SRT Sender URL ZUM SENDEN (Beispiel): srt://${public_ip}:${srt_sender_port}?streamid=livekey${NC}"
-    echo -e "${SUCCESS}SRT Player URL ZUM EMPFANGEN (Beispiel): srt://${public_ip}:${srt_player_port}?streamid=playkey${NC}"
-    echo -e "${SUCCESS}SRT/SRTLA Statistiken URL (Beispiel): http://${public_ip}:${sls_stats_port}/stats/playkey${NC}"
-    echo -e "${SUCCESS}RTMP Statistiken URL: http://${public_ip}:${rtmp_stats_port}/stats${NC}"
-    echo -e "${SUCCESS}RTMP URL ZUM SENDEN UND EMPFANGEN (Beispiel): rtmp://${public_ip}:${rtmp_port}/publish/livekey${NC}"
+    echo -e "${SUCCESS}SRTLA Sender URL ZUM SENDEN (Beispiel): srtla://${p_public_ip}:${p_srtla_port}?streamid=livekey${NC}"
+    echo -e "${SUCCESS}SRT Sender URL ZUM SENDEN (Beispiel): srt://${p_public_ip}:${p_srt_sender_port}?streamid=livekey${NC}"
+    echo -e "${SUCCESS}SRT Player URL ZUM EMPFANGEN (Beispiel): srt://${p_public_ip}:${p_srt_player_port}?streamid=playkey${NC}"
+    echo -e "${SUCCESS}SRT/SRTLA Statistiken URL (Beispiel): http://${p_public_ip}:${p_sls_stats_port}/stats/playkey${NC}"
+    echo -e "${SUCCESS}RTMP Statistiken URL: http://${p_public_ip}:${p_rtmp_stats_port}/stats${NC}"
+    echo -e "${SUCCESS}RTMP URL ZUM SENDEN UND EMPFANGEN (Beispiel): rtmp://${p_public_ip}:${p_rtmp_port}/publish/livekey${NC}"
   else
     echo -e "${HEADER}Available services:${NC}"
-    echo -e "${SUCCESS}SLSPanel UI: http://${public_ip}:${management_port}${NC}"
+    echo -e "${SUCCESS}SLSPanel UI: http://${p_public_ip}:${management_port}${NC}"
     echo -e "${SUCCESS}API Key: ${apikey}${NC}"
     echo -e "${SUCCESS}Backend API: ${app_url}${NC}"
-    echo -e "${SUCCESS}SRTLA Sender URL TO SEND (Example): srtla://${public_ip}:${srtla_port}?streamid=livekey${NC}"
-    echo -e "${SUCCESS}SRT Sender URL TO SEND (Example): srt://${public_ip}:${srt_sender_port}?streamid=livekey${NC}"
-    echo -e "${SUCCESS}SRT Player URL TO RECEIVE (Example): srt://${public_ip}:${srt_player_port}?streamid=playkey${NC}"
-    echo -e "${SUCCESS}SRT/SRTLA Statistics URL (Example): http://${public_ip}:${sls_stats_port}/stats/playkey${NC}"
-    echo -e "${SUCCESS}RTMP Stats URL: http://${public_ip}:${rtmp_stats_port}/stats${NC}"
-    echo -e "${SUCCESS}RTMP URL FOR SENDING AND RECEIVING (Example): rtmp://${public_ip}:${rtmp_port}/publish/livekey${NC}"
+    echo -e "${SUCCESS}SRTLA Sender URL TO SEND (Example): srtla://${p_public_ip}:${p_srtla_port}?streamid=livekey${NC}"
+    echo -e "${SUCCESS}SRT Sender URL TO SEND (Example): srt://${p_public_ip}:${p_srt_sender_port}?streamid=livekey${NC}"
+    echo -e "${SUCCESS}SRT Player URL TO RECEIVE (Example): srt://${p_public_ip}:${p_srt_player_port}?streamid=playkey${NC}"
+    echo -e "${SUCCESS}SRT/SRTLA Statistics URL (Example): http://${p_public_ip}:${p_sls_stats_port}/stats/playkey${NC}"
+    echo -e "${SUCCESS}RTMP Stats URL: http://${p_public_ip}:${p_rtmp_stats_port}/stats${NC}"
+    echo -e "${SUCCESS}RTMP URL FOR SENDING AND RECEIVING (Example): rtmp://${p_public_ip}:${p_rtmp_port}/publish/livekey${NC}"
   fi
 }
 
@@ -302,6 +305,7 @@ function recreate_container() {
     restart_flag="--restart always"
   fi
 
+  # shellcheck disable=SC2086
   if ! docker run -d --name "$cname" $restart_flag "${run_args[@]}" "$image"; then
     [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname konnte nicht gestartet werden.${NC}" || echo -e "${ERROR}Failed to start container $cname.${NC}"
     return 1
@@ -310,7 +314,17 @@ function recreate_container() {
   [[ "$lang" == "de" ]] && echo -e "${SUCCESS}Container $cname wurde neu erstellt.${NC}" || echo -e "${SUCCESS}Container $cname has been recreated.${NC}"
 
   sleep 3
-  health_check "$cname"
+  if [[ "$cname" != "wud" ]]; then
+    health_check "$cname"
+  else
+    local running
+    running=$(docker inspect -f '{{.State.Running}}' "$cname" 2>/dev/null || echo "false")
+    if [[ "$running" == "true" ]]; then
+      [[ "$lang" == "de" ]] && echo -e "${SUCCESS}Container $cname laeuft.${NC}" || echo -e "${SUCCESS}Container $cname is running.${NC}"
+    else
+      [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname laeuft NICHT!${NC}" || echo -e "${ERROR}Container $cname is NOT running!${NC}"
+    fi
+  fi
 }
 
 function update_services() {
@@ -424,7 +438,7 @@ if [[ "$lang" == "de" ]]; then
   wud_skip_msg="WUD wird nicht installiert."
   ipv6_enable_msg="Docker IPv6 Unterstuetzung wird aktiviert..."
   ipv6_skip_msg="Docker IPv6 Unterstuetzung wird nicht aktiviert."
-  restart_msg="Bitte beachten: Nach Docker-Installation ist evtl. ein Neustart oder eine neue Anmeldung noetig, damit Docker-Gruppenrechte aktiv werden."
+  restart_msg="${YELLOW}Bitte beachten: Nach Docker-Installation ist evtl. ein Neustart oder eine neue Anmeldung noetig, damit Docker-Gruppenrechte aktiv werden.${NC}"
   port_prompts=(
     "Port fuer SRT-Player (Standard: 4000)"
     "Port fuer SRT-Sender (Standard: 4001)"
@@ -459,7 +473,7 @@ else
   wud_skip_msg="Skipping WUD installation."
   ipv6_enable_msg="Enabling Docker IPv6 support..."
   ipv6_skip_msg="Not enabling Docker IPv6 support."
-  restart_msg="Please note: After Docker installation a reboot or re-login might be necessary to activate Docker group permissions."
+  restart_msg="${YELLOW}Please note: After Docker installation a reboot or re-login might be necessary to activate Docker group permissions.${NC}"
   port_prompts=(
     "Port for SRT Player (default: 4000)"
     "Port for SRT Sender (default: 4001)"
@@ -804,7 +818,17 @@ if [[ "$mainaction" == "1" ]]; then
     fi
   fi
 
-  print_available_services "$app_url" "$slspanel_port" "$(cat .apikey 2>/dev/null || echo 'N/A')"
+  print_available_services \
+    "$app_url" \
+    "$slspanel_port" \
+    "$(cat .apikey 2>/dev/null || echo 'N/A')" \
+    "$public_ip" \
+    "$srtla_port" \
+    "$srt_sender_port" \
+    "$srt_player_port" \
+    "$sls_stats_port" \
+    "$rtmp_stats_port" \
+    "$rtmp_port"
 
   echo -e "$done_msg"
   echo -e "$restart_msg"
