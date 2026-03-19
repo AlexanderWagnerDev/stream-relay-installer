@@ -146,6 +146,38 @@ function extract_api_key() {
   echo "$apikey"
 }
 
+function extract_api_key_with_retry() {
+  local max_attempts=5
+  local wait_seconds=5
+  local attempt=1
+  local apikey=""
+
+  while [[ $attempt -le $max_attempts ]]; do
+    if [[ "$lang" == "de" ]]; then
+      echo -e "${INFO}Versuche API-Key zu extrahieren (Versuch $attempt/$max_attempts)...${NC}"
+    else
+      echo -e "${INFO}Trying to extract API key (attempt $attempt/$max_attempts)...${NC}"
+    fi
+    apikey=$(extract_api_key)
+    if [[ -n "$apikey" ]]; then
+      echo "$apikey"
+      return 0
+    fi
+    if [[ $attempt -lt $max_attempts ]]; then
+      if [[ "$lang" == "de" ]]; then
+        echo -e "${INFO}API-Key noch nicht verfuegbar, warte ${wait_seconds}s...${NC}"
+      else
+        echo -e "${INFO}API key not yet available, waiting ${wait_seconds}s...${NC}"
+      fi
+      sleep "$wait_seconds"
+    fi
+    attempt=$((attempt + 1))
+  done
+
+  echo ""
+  return 1
+}
+
 function print_available_services() {
   local app_url="$1"
   local management_port="$2"
@@ -347,8 +379,7 @@ function update_services() {
     apikey=$(cat .apikey 2>/dev/null || echo "")
     if [[ -z "$apikey" ]]; then
       [[ "$lang" == "de" ]] && echo -e "${INFO}Versuche API-Key neu zu extrahieren...${NC}" || echo -e "${INFO}Trying to re-extract API key...${NC}"
-      sleep 5
-      apikey=$(extract_api_key)
+      apikey=$(extract_api_key_with_retry)
       if [[ -n "$apikey" ]]; then
         echo "$apikey" > .apikey
         [[ "$lang" == "de" ]] && echo -e "${SUCCESS}API-Key erfolgreich extrahiert.${NC}" || echo -e "${SUCCESS}API key successfully extracted.${NC}"
@@ -667,13 +698,7 @@ if [[ "$mainaction" == "1" ]]; then
       else
         echo -e "${INFO}Waiting for the container to fully initialize...${NC}"
       fi
-      sleep 10
-      if [[ "$lang" == "de" ]]; then
-        echo -e "${INFO}Versuche API-Key zu extrahieren...${NC}"
-      else
-        echo -e "${INFO}Trying to extract API key...${NC}"
-      fi
-      apikey=$(extract_api_key)
+      apikey=$(extract_api_key_with_retry)
       if [[ -n "$apikey" ]]; then
         echo "$apikey" > .apikey
         if [[ "$lang" == "de" ]]; then
