@@ -50,7 +50,7 @@ function system_update_prompt() {
       echo -e "${YELLOW}Ein Neustart wird empfohlen, um Kernel-Updates zu aktivieren.${NC}"
       sleep 3
     else
-      echo -e "${INFO}Systemaktualisierung übersprungen.${NC}"
+      echo -e "${INFO}Systemaktualisierung uebersprungen.${NC}"
     fi
   else
     read -rp $'\033[1;33mDo you want to update the system now? (y/n): \033[0m' sys_update
@@ -69,7 +69,7 @@ function system_update_prompt() {
 
 function install_docker_debian_ubuntu() {
   if [[ "$lang" == "de" ]]; then
-    echo -e "${INFO}Installation von Docker über das offizielle get.docker.com Script...${NC}"
+    echo -e "${INFO}Installation von Docker ueber das offizielle get.docker.com Script...${NC}"
   else
     echo -e "${INFO}Installing Docker via official get.docker.com script...${NC}"
   fi
@@ -154,7 +154,7 @@ function print_available_services() {
   local management_port="$2"
   local apikey="$3"
   if [[ "$lang" == "de" ]]; then
-    echo -e "${HEADER}Verfügbare Dienste:${NC}"
+    echo -e "${HEADER}Verfuegbare Dienste:${NC}"
     echo -e "${SUCCESS}SLSPanel UI: http://${public_ip}:${management_port}${NC}"
     echo -e "${SUCCESS}API Key: ${apikey}${NC}"
     echo -e "${SUCCESS}Backend API: ${app_url}${NC}"
@@ -181,9 +181,9 @@ function print_available_services() {
 function print_help() {
   if [[ "$lang" == "de" ]]; then
     echo -e "${HEADER}Hilfe:${NC}
-  Mit diesem Script kannst du die Installation, das Starten, Stoppen, Aktualisieren oder das Entfernen der Stream-Services ausführen.
+  Mit diesem Script kannst du die Installation, das Starten, Stoppen, Aktualisieren oder das Entfernen der Stream-Services ausfuehren.
   ${GREEN}Funktionen:${NC}
-  [installieren]    Installation durchführen
+  [installieren]    Installation durchfuehren
   [starten]         Container starten
   [stoppen]         Container stoppen
   [aktualisieren]   Container und Images aktualisieren
@@ -212,12 +212,12 @@ function health_check() {
     if [[ "$health" == "healthy" ]]; then
       [[ "$lang" == "de" ]] && echo -e "${SUCCESS}Container $cname ist gesund.${NC}" || echo -e "${SUCCESS}Container $cname is healthy.${NC}"
     elif [[ -z "$health" ]]; then
-      [[ "$lang" == "de" ]] && echo -e "${SUCCESS}Container $cname läuft (kein Healthcheck definiert).${NC}" || echo -e "${SUCCESS}Container $cname is running (no healthcheck defined).${NC}"
+      [[ "$lang" == "de" ]] && echo -e "${SUCCESS}Container $cname laeuft (kein Healthcheck definiert).${NC}" || echo -e "${SUCCESS}Container $cname is running (no healthcheck defined).${NC}"
     else
       [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname ist nicht gesund! Status: $health${NC}" || echo -e "${ERROR}Container $cname is not healthy! Status: $health${NC}"
     fi
   else
-    [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname läuft NICHT!${NC}" || echo -e "${ERROR}Container $cname is NOT running!${NC}"
+    [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname laeuft NICHT!${NC}" || echo -e "${ERROR}Container $cname is NOT running!${NC}"
   fi
 }
 
@@ -243,46 +243,39 @@ function recreate_container() {
   local fallback_image="$3"
 
   if ! docker ps -a --format '{{.Names}}' | grep -q "^$cname$"; then
-    [[ "$lang" == "de" ]] && echo -e "${INFO}Container $cname existiert nicht, überspringe...${NC}" || echo -e "${INFO}Container $cname does not exist, skipping...${NC}"
+    [[ "$lang" == "de" ]] && echo -e "${INFO}Container $cname existiert nicht, ueberspringe...${NC}" || echo -e "${INFO}Container $cname does not exist, skipping...${NC}"
     return 0
   fi
 
   [[ "$lang" == "de" ]] && echo -e "${INFO}Aktualisiere Container: $cname${NC}" || echo -e "${INFO}Updating container: $cname${NC}"
 
-  # Read restart policy via docker inspect --format
   local restart_policy
   restart_policy=$(docker inspect "$cname" --format '{{.HostConfig.RestartPolicy.Name}}' 2>/dev/null || echo "")
 
-  # Build port args via docker inspect --format (Go template iterates PortBindings map)
-  local ports_args=""
+  local -a run_args=()
+
   while IFS= read -r port_entry; do
-    [[ -n "$port_entry" ]] && ports_args="$ports_args -p $port_entry"
+    [[ -n "$port_entry" ]] && run_args+=(-p "$port_entry")
   done < <(docker inspect "$cname" --format \
     '{{range $p, $confs := .HostConfig.PortBindings}}{{range $confs}}{{.HostPort}}:{{$p}} {{end}}{{end}}' \
     2>/dev/null | tr ' ' '\n' | grep -v '^$')
 
-  # Build env args, skip PATH and HOME
-  local env_args=""
   while IFS= read -r env_entry; do
     if [[ -n "$env_entry" && "$env_entry" != PATH=* && "$env_entry" != HOME=* ]]; then
-      env_args="$env_args -e \"$env_entry\""
+      run_args+=(-e "$env_entry")
     fi
   done < <(docker inspect "$cname" --format \
     '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null)
 
-  # Build volume args via docker inspect --format
-  local volumes_args=""
   while IFS= read -r vol_entry; do
-    [[ -n "$vol_entry" ]] && volumes_args="$volumes_args -v $vol_entry"
+    [[ -n "$vol_entry" ]] && run_args+=(-v "$vol_entry")
   done < <(docker inspect "$cname" --format \
     '{{range .Mounts}}{{.Source}}:{{.Destination}} {{end}}' \
     2>/dev/null | tr ' ' '\n' | grep -v '^$')
 
-  # Build wud label args
-  local labels_args=""
   while IFS= read -r label_entry; do
     if [[ -n "$label_entry" && "$label_entry" == wud.* ]]; then
-      labels_args="$labels_args --label \"$label_entry\""
+      run_args+=(--label "$label_entry")
     fi
   done < <(docker inspect "$cname" --format \
     '{{range $k, $v := .Config.Labels}}{{$k}}={{$v}} {{end}}' \
@@ -310,9 +303,11 @@ function recreate_container() {
     restart_flag="--restart always"
   fi
 
-  local run_cmd="docker run -d --name $cname $restart_flag $ports_args $env_args $volumes_args $labels_args $image"
-
-  eval "$run_cmd"
+  # shellcheck disable=SC2086
+  if ! docker run -d --name "$cname" $restart_flag "${run_args[@]}" "$image"; then
+    [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname konnte nicht gestartet werden.${NC}" || echo -e "${ERROR}Failed to start container $cname.${NC}"
+    return 1
+  fi
 
   [[ "$lang" == "de" ]] && echo -e "${SUCCESS}Container $cname wurde neu erstellt.${NC}" || echo -e "${SUCCESS}Container $cname has been recreated.${NC}"
 
@@ -363,14 +358,14 @@ function uninstall_services() {
   if [ -f ".apikey" ]; then
     rm -f ".apikey"
     if [[ "$lang" == "de" ]]; then
-      echo -e "${SUCCESS}API-Key Datei (.apikey) gelöscht.${NC}"
+      echo -e "${SUCCESS}API-Key Datei (.apikey) geloescht.${NC}"
     else
       echo -e "${SUCCESS}API key file (.apikey) deleted.${NC}"
     fi
   fi
 
   if [[ "$lang" == "de" ]]; then
-    read -rp $'\033[1;33mSollen auch Volumes gelöscht werden? (j/n):\033[0m ' rmvol
+    read -rp $'\033[1;33mSollen auch Volumes geloescht werden? (j/n):\033[0m ' rmvol
     if [[ "$rmvol" =~ ^[Jj] ]]; then
       docker volume rm srtla-server 2>/dev/null || true
       echo -e "${SUCCESS}Docker-Volume srtla-server entfernt.${NC}"
@@ -390,7 +385,7 @@ function uninstall_services() {
   fi
 }
 
-echo "Wähle Sprache / Choose language:"
+echo "Waehle Sprache / Choose language:"
 echo "[1] Deutsch"
 echo "[2] English"
 read -rp "Auswahl / Choice [1]: " lang_choice
@@ -411,15 +406,15 @@ if [[ "$lang" == "de" ]]; then
   rtmp_prompt="RTMP-Server Docker Container installieren und starten? (j/n):"
   srtla_prompt="SRTLA-Server Docker Container installieren und starten? (j/n):"
   wud_prompt="WUD Container (automatische Updates) installieren und starten? (j/n):"
-  wud_labels_prompt="Sollen die Container (RTMP, SRTLA, SLSPanel) von WUD überwacht werden? (j/n):"
-  ipv6_prompt="Docker IPv6 Unterstützung aktivieren? (j/n):"
+  wud_labels_prompt="Sollen die Container (RTMP, SRTLA, SLSPanel) von WUD ueberwacht werden? (j/n):"
+  ipv6_prompt="Docker IPv6 Unterstuetzung aktivieren? (j/n):"
   use_default_ports_prompt="Standardports verwenden? (j/n):"
-  manual_ip_prompt="Möchtest du eine Domain oder IP manuell eingeben? (j/n):"
+  manual_ip_prompt="Moechtest du eine Domain oder IP manuell eingeben? (j/n):"
   enter_ip_prompt="Bitte Domain oder IP eingeben:"
   slspanel_install_prompt="SLSPanel installieren und starten? (j/n):"
-  slspanel_login_prompt="Login für SLSPanel aktivieren? (j/n):"
-  slspanel_username_prompt="Benutzername für SLSPanel Admin: "
-  slspanel_password_prompt="Passwort für SLSPanel Admin: "
+  slspanel_login_prompt="Login fuer SLSPanel aktivieren? (j/n):"
+  slspanel_username_prompt="Benutzername fuer SLSPanel Admin: "
+  slspanel_password_prompt="Passwort fuer SLSPanel Admin: "
   done_msg="Setup abgeschlossen."
   docker_install_msg="Docker Installation wird gestartet..."
   docker_skip_msg="Docker wird nicht installiert."
@@ -429,17 +424,17 @@ if [[ "$lang" == "de" ]]; then
   srtla_skip_msg="SRTLA-Server wird nicht installiert."
   wud_install_msg="Starte WUD Docker-Container..."
   wud_skip_msg="WUD wird nicht installiert."
-  ipv6_enable_msg="Docker IPv6 Unterstützung wird aktiviert..."
-  ipv6_skip_msg="Docker IPv6 Unterstützung wird nicht aktiviert."
-  restart_msg="Bitte beachten: Nach Docker-Installation ist evtl. ein Neustart oder eine neue Anmeldung nötig, damit Docker-Gruppenrechte aktiv werden."
+  ipv6_enable_msg="Docker IPv6 Unterstuetzung wird aktiviert..."
+  ipv6_skip_msg="Docker IPv6 Unterstuetzung wird nicht aktiviert."
+  restart_msg="Bitte beachten: Nach Docker-Installation ist evtl. ein Neustart oder eine neue Anmeldung noetig, damit Docker-Gruppenrechte aktiv werden."
   port_prompts=(
-    "Port für SRT-Player (Standard: 4000)"
-    "Port für SRT-Sender (Standard: 4001)"
-    "Port für SRTLA (Standard: 5000)"
-    "Port für SLS Stats (Standard: 8789)"
-    "Port für RTMP-Server Stats/Web (Standard: 8090)"
-    "Port für RTMP (Standard: 1935)"
-    "Port für SLSPanel WebUI (Standard: 8000)"
+    "Port fuer SRT-Player (Standard: 4000)"
+    "Port fuer SRT-Sender (Standard: 4001)"
+    "Port fuer SRTLA (Standard: 5000)"
+    "Port fuer SLS Stats (Standard: 8789)"
+    "Port fuer RTMP-Server Stats/Web (Standard: 8090)"
+    "Port fuer RTMP (Standard: 1935)"
+    "Port fuer SLSPanel WebUI (Standard: 8000)"
   )
 else
   docker_prompt="Install Docker? (y/n):"
@@ -479,7 +474,7 @@ else
 fi
 
 if [[ "$lang" == "de" ]]; then
-  echo -e "${YELLOW}Was möchtest du tun?${NC}"
+  echo -e "${YELLOW}Was moechtest du tun?${NC}"
   echo " [1] Installieren"
   echo " [2] Starten"
   echo " [3] Stoppen"
@@ -582,7 +577,7 @@ if [[ "$mainaction" == "1" ]]; then
 
   if [[ "$public_ip" == "127.0.0.1" ]]; then
     if [[ "$lang" == "de" ]]; then
-      echo -e "${YELLOW}Warnung: Öffentliche IP konnte nicht ermittelt werden, localhost wird als APP_URL benutzt.${NC}"
+      echo -e "${YELLOW}Warnung: Oeffentliche IP konnte nicht ermittelt werden, localhost wird als APP_URL benutzt.${NC}"
     else
       echo -e "${YELLOW}Warning: Public IP could not be determined, localhost will be used as APP_URL.${NC}"
     fi
@@ -654,7 +649,7 @@ if [[ "$mainaction" == "1" ]]; then
 
     if [ ! -f ".apikey" ]; then
       if [[ "$lang" == "de" ]]; then
-        echo -e "${INFO}Warte auf vollständiges Initialisieren des Containers...${NC}"
+        echo -e "${INFO}Warte auf vollstaendiges Initialisieren des Containers...${NC}"
       else
         echo -e "${INFO}Waiting for the container to fully initialize...${NC}"
       fi
@@ -700,9 +695,9 @@ if [[ "$mainaction" == "1" ]]; then
 
   if [[ "$lang" == "de" ]]; then
     slspanel_install_prompt="SLSPanel installieren und starten? (j/n): "
-    slspanel_login_prompt="Login für SLSPanel aktivieren? (j/n): "
-    slspanel_username_prompt="Benutzername für SLSPanel Admin: "
-    slspanel_password_prompt="Passwort für SLSPanel Admin: "
+    slspanel_login_prompt="Login fuer SLSPanel aktivieren? (j/n): "
+    slspanel_username_prompt="Benutzername fuer SLSPanel Admin: "
+    slspanel_password_prompt="Passwort fuer SLSPanel Admin: "
   else
     slspanel_install_prompt="Install and start SLSPanel? (y/n): "
     slspanel_login_prompt="Enable login for SLSPanel? (y/n): "
@@ -735,7 +730,7 @@ if [[ "$mainaction" == "1" ]]; then
 
     slspanel_api_url="http://${public_ip}:${sls_stats_port}"
     apikey=$(cat .apikey 2>/dev/null || echo your_api_key)
-    TZ=$(cat /etc/timezone 2>/dev/null || echo UTC)
+    TZ=$(cat /etc/timezone 2>/dev/null || timedatectl show --property=Timezone --value 2>/dev/null || echo UTC)
 
     if [[ "$enable_login" =~ ^[JjYy] ]]; then
       if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
