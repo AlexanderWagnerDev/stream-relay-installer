@@ -18,7 +18,7 @@ function print_ascii_art_de() {
  / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \ ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
- |____/ \__|_|  \___|\_,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
+ |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
                                                          |___/                                                                                                                   
            von AlexanderWagnerDev
 EOF
@@ -30,7 +30,7 @@ function print_ascii_art_en() {
  / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \ ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
- |____/ \__|_|  \___|\_,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
+ |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
                                                          |___/                                                                                                                                                
            by AlexanderWagnerDev
 EOF
@@ -50,7 +50,7 @@ function system_update_prompt() {
       echo -e "${YELLOW}Ein Neustart wird empfohlen, um Kernel-Updates zu aktivieren.${NC}"
       sleep 3
     else
-      echo -e "${INFO}Systemaktualisierung uebersprungen.${NC}"
+      echo -e "${INFO}Systemaktualisierung übersprungen.${NC}"
     fi
   else
     read -rp $'\033[1;33mDo you want to update the system now? (y/n): \033[0m' sys_update
@@ -69,7 +69,7 @@ function system_update_prompt() {
 
 function install_docker_debian_ubuntu() {
   if [[ "$lang" == "de" ]]; then
-    echo -e "${INFO}Installation von Docker ueber das offizielle get.docker.com Script...${NC}"
+    echo -e "${INFO}Installation von Docker über das offizielle get.docker.com Script...${NC}"
   else
     echo -e "${INFO}Installing Docker via official get.docker.com script...${NC}"
   fi
@@ -130,7 +130,7 @@ function docker_pull_fallback() {
     if ! docker pull "$fallback_image" 2>/dev/null; then
       if [[ "$lang" == "de" ]]; then
         echo -e "${RED}Fehler: Image konnte weder von Docker Hub noch GHCR gezogen werden: $image / $fallback_image${NC}"
-        echo -e "${RED}Das Script wird abgebrochen. Bitte Internetverbindung und Image-Namen pruefen.${NC}"
+        echo -e "${RED}Das Script wird abgebrochen. Bitte Internetverbindung und Image-Namen prüfen.${NC}"
       else
         echo -e "${RED}Error: Image could not be pulled from Docker Hub nor GHCR: $image / $fallback_image${NC}"
         echo -e "${RED}Aborting script. Please check your internet connection and image names.${NC}"
@@ -165,7 +165,7 @@ function extract_api_key_with_retry() {
     fi
     if [[ $attempt -lt $max_attempts ]]; then
       if [[ "$lang" == "de" ]]; then
-        echo -e "${INFO}API-Key noch nicht verfuegbar, warte ${wait_seconds}s...${NC}"
+        echo -e "${INFO}API-Key noch nicht verfügbar, warte ${wait_seconds}s...${NC}"
       else
         echo -e "${INFO}API key not yet available, waiting ${wait_seconds}s...${NC}"
       fi
@@ -190,7 +190,7 @@ function print_available_services() {
   local p_rtmp_stats_port="$9"
   local p_rtmp_port="${10}"
   if [[ "$lang" == "de" ]]; then
-    echo -e "${HEADER}Verfuegbare Dienste:${NC}"
+    echo -e "${HEADER}Verfügbare Dienste:${NC}"
     echo -e "${SUCCESS}SLSPanel UI: http://${p_public_ip}:${management_port}${NC}"
     echo -e "${SUCCESS}API Key: ${apikey}${NC}"
     echo -e "${SUCCESS}Backend API: ${app_url}${NC}"
@@ -217,9 +217,9 @@ function print_available_services() {
 function print_help() {
   if [[ "$lang" == "de" ]]; then
     echo -e "${HEADER}Hilfe:${NC}
-  Mit diesem Script kannst du die Installation, das Starten, Stoppen, Aktualisieren oder das Entfernen der Stream-Services ausfuehren.
+  Mit diesem Script kannst du die Installation, das Starten, Stoppen, Aktualisieren oder das Entfernen der Stream-Services ausführen.
   ${GREEN}Funktionen:${NC}
-  [installieren]    Installation durchfuehren
+  [installieren]    Installation durchführen
   [starten]         Container starten
   [stoppen]         Container stoppen
   [aktualisieren]   Container und Images aktualisieren
@@ -248,12 +248,12 @@ function health_check() {
     if [[ "$health" == "healthy" ]]; then
       [[ "$lang" == "de" ]] && echo -e "${SUCCESS}Container $cname ist gesund.${NC}" || echo -e "${SUCCESS}Container $cname is healthy.${NC}"
     elif [[ -z "$health" ]]; then
-      [[ "$lang" == "de" ]] && echo -e "${SUCCESS}Container $cname laeuft (kein Healthcheck definiert).${NC}" || echo -e "${SUCCESS}Container $cname is running (no healthcheck defined).${NC}"
+      [[ "$lang" == "de" ]] && echo -e "${SUCCESS}Container $cname läuft (kein Healthcheck definiert).${NC}" || echo -e "${SUCCESS}Container $cname is running (no healthcheck defined).${NC}"
     else
       [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname ist nicht gesund! Status: $health${NC}" || echo -e "${ERROR}Container $cname is not healthy! Status: $health${NC}"
     fi
   else
-    [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname laeuft NICHT!${NC}" || echo -e "${ERROR}Container $cname is NOT running!${NC}"
+    [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname läuft NICHT!${NC}" || echo -e "${ERROR}Container $cname is NOT running!${NC}"
   fi
 }
 
@@ -279,7 +279,7 @@ function recreate_container() {
   local fallback_image="$3"
 
   if ! docker ps -a --format '{{.Names}}' | grep -q "^$cname$"; then
-    [[ "$lang" == "de" ]] && echo -e "${INFO}Container $cname existiert nicht, ueberspringe...${NC}" || echo -e "${INFO}Container $cname does not exist, skipping...${NC}"
+    [[ "$lang" == "de" ]] && echo -e "${INFO}Container $cname existiert nicht, überspringe...${NC}" || echo -e "${INFO}Container $cname does not exist, skipping...${NC}"
     return 0
   fi
 
@@ -354,9 +354,9 @@ function recreate_container() {
     local running
     running=$(docker inspect -f '{{.State.Running}}' "$cname" 2>/dev/null || echo "false")
     if [[ "$running" == "true" ]]; then
-      [[ "$lang" == "de" ]] && echo -e "${SUCCESS}Container $cname laeuft.${NC}" || echo -e "${SUCCESS}Container $cname is running.${NC}"
+      [[ "$lang" == "de" ]] && echo -e "${SUCCESS}Container $cname läuft.${NC}" || echo -e "${SUCCESS}Container $cname is running.${NC}"
     else
-      [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname laeuft NICHT!${NC}" || echo -e "${ERROR}Container $cname is NOT running!${NC}"
+      [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname läuft NICHT!${NC}" || echo -e "${ERROR}Container $cname is NOT running!${NC}"
     fi
   fi
 }
@@ -403,14 +403,14 @@ function uninstall_services() {
   if [ -f ".apikey" ]; then
     rm -f ".apikey"
     if [[ "$lang" == "de" ]]; then
-      echo -e "${SUCCESS}API-Key Datei (.apikey) geloescht.${NC}"
+      echo -e "${SUCCESS}API-Key Datei (.apikey) gelöscht.${NC}"
     else
       echo -e "${SUCCESS}API key file (.apikey) deleted.${NC}"
     fi
   fi
 
   if [[ "$lang" == "de" ]]; then
-    read -rp $'\033[1;33mSollen auch Volumes geloescht werden? (j/n):\033[0m ' rmvol
+    read -rp $'\033[1;33mSollen auch Volumes gelöscht werden? (j/n):\033[0m ' rmvol
     if [[ "$rmvol" =~ ^[Jj] ]]; then
       docker volume rm srtla-server 2>/dev/null || true
       echo -e "${SUCCESS}Docker-Volume srtla-server entfernt.${NC}"
@@ -430,7 +430,7 @@ function uninstall_services() {
   fi
 }
 
-echo "Waehle Sprache / Choose language:"
+echo "Wähle Sprache / Choose language:"
 echo "[1] Deutsch"
 echo "[2] English"
 read -rp "Auswahl / Choice [1]: " lang_choice
@@ -451,15 +451,15 @@ if [[ "$lang" == "de" ]]; then
   rtmp_prompt="RTMP-Server Docker Container installieren und starten? (j/n):"
   srtla_prompt="SRTLA-Server Docker Container installieren und starten? (j/n):"
   wud_prompt="WUD Container (automatische Updates) installieren und starten? (j/n):"
-  wud_labels_prompt="Sollen die Container (RTMP, SRTLA, SLSPanel) von WUD ueberwacht werden? (j/n):"
-  ipv6_prompt="Docker IPv6 Unterstuetzung aktivieren? (j/n):"
+  wud_labels_prompt="Sollen die Container (RTMP, SRTLA, SLSPanel) von WUD überwacht werden? (j/n):"
+  ipv6_prompt="Docker IPv6 Unterstützung aktivieren? (j/n):"
   use_default_ports_prompt="Standardports verwenden? (j/n):"
-  manual_ip_prompt="Moechtest du eine Domain oder IP manuell eingeben? (j/n):"
+  manual_ip_prompt="Möchtest du eine Domain oder IP manuell eingeben? (j/n):"
   enter_ip_prompt="Bitte Domain oder IP eingeben:"
   slspanel_install_prompt="SLSPanel installieren und starten? (j/n): "
-  slspanel_login_prompt="Login fuer SLSPanel aktivieren? (j/n): "
-  slspanel_username_prompt="Benutzername fuer SLSPanel Admin: "
-  slspanel_password_prompt="Passwort fuer SLSPanel Admin: "
+  slspanel_login_prompt="Login für SLSPanel aktivieren? (j/n): "
+  slspanel_username_prompt="Benutzername für SLSPanel Admin: "
+  slspanel_password_prompt="Passwort für SLSPanel Admin: "
   done_msg="Setup abgeschlossen."
   docker_install_msg="Docker Installation wird gestartet..."
   docker_skip_msg="Docker wird nicht installiert."
@@ -469,17 +469,17 @@ if [[ "$lang" == "de" ]]; then
   srtla_skip_msg="SRTLA-Server wird nicht installiert."
   wud_install_msg="Starte WUD Docker-Container..."
   wud_skip_msg="WUD wird nicht installiert."
-  ipv6_enable_msg="Docker IPv6 Unterstuetzung wird aktiviert..."
-  ipv6_skip_msg="Docker IPv6 Unterstuetzung wird nicht aktiviert."
-  restart_msg="${YELLOW}Bitte beachten: Nach Docker-Installation ist evtl. ein Neustart oder eine neue Anmeldung noetig, damit Docker-Gruppenrechte aktiv werden.${NC}"
+  ipv6_enable_msg="Docker IPv6 Unterstützung wird aktiviert..."
+  ipv6_skip_msg="Docker IPv6 Unterstützung wird nicht aktiviert."
+  restart_msg="${YELLOW}Bitte beachten: Nach Docker-Installation ist evtl. ein Neustart oder eine neue Anmeldung nötig, damit Docker-Gruppenrechte aktiv werden.${NC}"
   port_prompts=(
-    "Port fuer SRT-Player (Standard: 4000)"
-    "Port fuer SRT-Sender (Standard: 4001)"
-    "Port fuer SRTLA (Standard: 5000)"
-    "Port fuer SLS Stats (Standard: 8789)"
-    "Port fuer RTMP-Server Stats/Web (Standard: 8090)"
-    "Port fuer RTMP (Standard: 1935)"
-    "Port fuer SLSPanel WebUI (Standard: 8000)"
+    "Port für SRT-Player (Standard: 4000)"
+    "Port für SRT-Sender (Standard: 4001)"
+    "Port für SRTLA (Standard: 5000)"
+    "Port für SLS Stats (Standard: 8789)"
+    "Port für RTMP-Server Stats/Web (Standard: 8090)"
+    "Port für RTMP (Standard: 1935)"
+    "Port für SLSPanel WebUI (Standard: 8000)"
   )
 else
   docker_prompt="Install Docker? (y/n):"
@@ -519,7 +519,7 @@ else
 fi
 
 if [[ "$lang" == "de" ]]; then
-  echo -e "${YELLOW}Was moechtest du tun?${NC}"
+  echo -e "${YELLOW}Was möchtest du tun?${NC}"
   echo " [1] Installieren"
   echo " [2] Starten"
   echo " [3] Stoppen"
@@ -622,7 +622,7 @@ if [[ "$mainaction" == "1" ]]; then
 
   if [[ "$public_ip" == "127.0.0.1" ]]; then
     if [[ "$lang" == "de" ]]; then
-      echo -e "${YELLOW}Warnung: Oeffentliche IP konnte nicht ermittelt werden, localhost wird als APP_URL benutzt.${NC}"
+      echo -e "${YELLOW}Warnung: Öffentliche IP konnte nicht ermittelt werden, localhost wird als APP_URL benutzt.${NC}"
     else
       echo -e "${YELLOW}Warning: Public IP could not be determined, localhost will be used as APP_URL.${NC}"
     fi
@@ -694,7 +694,7 @@ if [[ "$mainaction" == "1" ]]; then
 
     if [ ! -f ".apikey" ]; then
       if [[ "$lang" == "de" ]]; then
-        echo -e "${INFO}Warte auf vollstaendiges Initialisieren des Containers...${NC}"
+        echo -e "${INFO}Warte auf vollständiges Initialisieren des Containers...${NC}"
       else
         echo -e "${INFO}Waiting for the container to fully initialize...${NC}"
       fi
@@ -759,7 +759,7 @@ if [[ "$mainaction" == "1" ]]; then
     apikey=$(cat .apikey 2>/dev/null || echo "")
     if [[ -z "$apikey" ]]; then
       if [[ "$lang" == "de" ]]; then
-        echo -e "${YELLOW}Warnung: Kein API-Key gefunden (.apikey). SLSPanel wird ohne gueltigen API-Key gestartet.${NC}"
+        echo -e "${YELLOW}Warnung: Kein API-Key gefunden (.apikey). SLSPanel wird ohne gültigen API-Key gestartet.${NC}"
       else
         echo -e "${YELLOW}Warning: No API key found (.apikey). SLSPanel will start without a valid API key.${NC}"
       fi
