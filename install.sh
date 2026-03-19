@@ -739,7 +739,7 @@ if [[ "$mainaction" == "1" ]]; then
         echo -e "${YELLOW}Warning: No API key found (.apikey). SLSPanel will start without a valid API key.${NC}"
       fi
     fi
-    TZ=$(cat /etc/timezone 2>/dev/null | grep -v '^$' || timedatectl show --property=Timezone --value 2>/dev/null || echo UTC)
+    TZ=$(grep -v '^$' /etc/timezone 2>/dev/null || timedatectl show --property=Timezone --value 2>/dev/null || echo UTC)
 
     docker_pull_fallback "alexanderwagnerdev/slspanel:beta" "ghcr.io/alexanderwagnerdev/slspanel:beta"
 
