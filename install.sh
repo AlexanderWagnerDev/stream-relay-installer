@@ -154,9 +154,9 @@ function extract_api_key_with_retry() {
 
   while [[ $attempt -le $max_attempts ]]; do
     if [[ "$lang" == "de" ]]; then
-      echo -e "${INFO}Versuche API-Key zu extrahieren (Versuch $attempt/$max_attempts)...${NC}"
+      echo -e "${INFO}Versuche API-Key zu extrahieren (Versuch $attempt/$max_attempts)...${NC}" >&2
     else
-      echo -e "${INFO}Trying to extract API key (attempt $attempt/$max_attempts)...${NC}"
+      echo -e "${INFO}Trying to extract API key (attempt $attempt/$max_attempts)...${NC}" >&2
     fi
     apikey=$(extract_api_key)
     if [[ -n "$apikey" ]]; then
@@ -165,9 +165,9 @@ function extract_api_key_with_retry() {
     fi
     if [[ $attempt -lt $max_attempts ]]; then
       if [[ "$lang" == "de" ]]; then
-        echo -e "${INFO}API-Key noch nicht verfügbar, warte ${wait_seconds}s...${NC}"
+        echo -e "${INFO}API-Key noch nicht verfügbar, warte ${wait_seconds}s...${NC}" >&2
       else
-        echo -e "${INFO}API key not yet available, waiting ${wait_seconds}s...${NC}"
+        echo -e "${INFO}API key not yet available, waiting ${wait_seconds}s...${NC}" >&2
       fi
       sleep "$wait_seconds"
     fi
