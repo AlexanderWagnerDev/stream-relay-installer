@@ -15,7 +15,7 @@ INFO="${YELLOW}"
 function print_ascii_art_de() {
   cat <<"EOF"
   ____  _                              ____      _               ___           _        _ _           
- / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \ ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
+ / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \  ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
  |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
@@ -27,7 +27,7 @@ EOF
 function print_ascii_art_en() {
   cat <<"EOF"
   ____  _                              ____      _               ___           _        _ _           
- / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \ ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
+ / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \  ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
  |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
@@ -303,11 +303,21 @@ function recreate_container() {
   done < <(docker inspect "$cname" --format \
     '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null)
 
-  while IFS= read -r vol_entry; do
-    [[ -n "$vol_entry" ]] && run_args+=(-v "$vol_entry")
-  done < <(docker inspect "$cname" --format \
-    '{{range .Mounts}}{{.Source}}:{{.Destination}} {{end}}' \
-    2>/dev/null | tr ' ' '\n' | grep -v '^$')
+  # For srtla-server: always use the hardcoded bind mount to ensure /var/lib/sls
+  # is properly mounted. Reading from docker inspect can produce unreliable results
+  # for bind mounts, causing SLS to fall back to /tmp and generate a new API key.
+  if [[ "$cname" == "srtla-server" ]]; then
+    local volume_data_path="/var/lib/docker/volumes/srtla-server/_data"
+    sudo chown -R 3001:3001 "$volume_data_path" 2>/dev/null || true
+    sudo chmod -R 755 "$volume_data_path" 2>/dev/null || true
+    run_args+=(-v "${volume_data_path}:/var/lib/sls")
+  else
+    while IFS= read -r vol_entry; do
+      [[ -n "$vol_entry" ]] && run_args+=(-v "$vol_entry")
+    done < <(docker inspect "$cname" --format \
+      '{{range .Mounts}}{{.Source}}:{{.Destination}} {{end}}' \
+      2>/dev/null | tr ' ' '\n' | grep -v '^$')
+  fi
 
   while IFS= read -r label_entry; do
     if [[ -n "$label_entry" && "$label_entry" == wud.* ]]; then
