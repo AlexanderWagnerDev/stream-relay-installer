@@ -303,9 +303,6 @@ function recreate_container() {
   done < <(docker inspect "$cname" --format \
     '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null)
 
-  # For srtla-server: always use the hardcoded bind mount to ensure /var/lib/sls
-  # is properly mounted. Reading from docker inspect can produce unreliable results
-  # for bind mounts, causing SLS to fall back to /tmp and generate a new API key.
   if [[ "$cname" == "srtla-server" ]]; then
     local volume_data_path="/var/lib/docker/volumes/srtla-server/_data"
     sudo chown -R 3001:3001 "$volume_data_path" 2>/dev/null || true
