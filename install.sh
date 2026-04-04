@@ -15,7 +15,7 @@ INFO="${YELLOW}"
 function print_ascii_art_de() {
   cat <<"EOF"
   ____  _                              ____      _               ___           _        _ _           
- / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \ ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
+ / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \  ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
  |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
@@ -27,7 +27,7 @@ EOF
 function print_ascii_art_en() {
   cat <<"EOF"
   ____  _                              ____      _               ___           _        _ _           
- / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \ ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
+ / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \  ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
   ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
  |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
@@ -303,11 +303,21 @@ function recreate_container() {
   done < <(docker inspect "$cname" --format \
     '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null)
 
-  while IFS= read -r vol_entry; do
-    [[ -n "$vol_entry" ]] && run_args+=(-v "$vol_entry")
-  done < <(docker inspect "$cname" --format \
-    '{{range .Mounts}}{{.Source}}:{{.Destination}} {{end}}' \
-    2>/dev/null | tr ' ' '\n' | grep -v '^$')
+  # For srtla-server: always use the hardcoded bind mount to ensure /var/lib/sls
+  # is properly mounted. Reading from docker inspect can produce unreliable results
+  # for bind mounts, causing SLS to fall back to /tmp and generate a new API key.
+  if [[ "$cname" == "srtla-server" ]]; then
+    local volume_data_path="/var/lib/docker/volumes/srtla-server/_data"
+    sudo chown -R 3001:3001 "$volume_data_path" 2>/dev/null || true
+    sudo chmod -R 755 "$volume_data_path" 2>/dev/null || true
+    run_args+=(-v "${volume_data_path}:/var/lib/sls")
+  else
+    while IFS= read -r vol_entry; do
+      [[ -n "$vol_entry" ]] && run_args+=(-v "$vol_entry")
+    done < <(docker inspect "$cname" --format \
+      '{{range .Mounts}}{{.Source}}:{{.Destination}} {{end}}' \
+      2>/dev/null | tr ' ' '\n' | grep -v '^$')
+  fi
 
   while IFS= read -r label_entry; do
     if [[ -n "$label_entry" && "$label_entry" == wud.* ]]; then
@@ -365,8 +375,8 @@ function update_services() {
   [[ "$lang" == "de" ]] && echo -e "${HEADER}=== Container-Update wird gestartet ===${NC}" || echo -e "${HEADER}=== Starting container update ===${NC}"
 
   local containers=("rtmp-server" "srtla-server" "slspanel" "wud")
-  local images=("alexanderwagnerdev/rtmp-server:beta" "alexanderwagnerdev/srtla-server:beta" "alexanderwagnerdev/slspanel:beta" "getwud/wud:latest")
-  local fallback_images=("ghcr.io/alexanderwagnerdev/rtmp-server:beta" "ghcr.io/alexanderwagnerdev/srtla-server:beta" "ghcr.io/alexanderwagnerdev/slspanel:beta" "ghcr.io/getwud/wud:latest")
+  local images=("alexanderwagnerdev/rtmp-server:latest" "alexanderwagnerdev/srtla-server:latest" "alexanderwagnerdev/slspanel:latest" "getwud/wud:latest")
+  local fallback_images=("ghcr.io/alexanderwagnerdev/rtmp-server:latest" "ghcr.io/alexanderwagnerdev/srtla-server:latest" "ghcr.io/alexanderwagnerdev/slspanel:latest" "ghcr.io/getwud/wud:latest")
 
   for i in "${!containers[@]}"; do
     recreate_container "${containers[$i]}" "${images[$i]}" "${fallback_images[$i]}"
@@ -643,19 +653,19 @@ if [[ "$mainaction" == "1" ]]; then
   install_rtmp=${install_rtmp:-n}
   if [[ "$install_rtmp" =~ ^[JjYy] ]]; then
     echo -e "$rtmp_install_msg"
-    docker_pull_fallback "alexanderwagnerdev/rtmp-server:beta" "ghcr.io/alexanderwagnerdev/rtmp-server:beta"
+    docker_pull_fallback "alexanderwagnerdev/rtmp-server:latest" "ghcr.io/alexanderwagnerdev/rtmp-server:latest"
 
     if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
       docker run -d --name rtmp-server --restart unless-stopped \
         --label "wud.watch=true" \
         --label "wud.watch.digest=true" \
-        --label "wud.tag.include=^beta$" \
+        --label "wud.tag.include=^latest$" \
         -p "${rtmp_stats_port}":80/tcp -p "${rtmp_port}":1935/tcp \
-        alexanderwagnerdev/rtmp-server:beta
+        alexanderwagnerdev/rtmp-server:latest
     else
       docker run -d --name rtmp-server --restart unless-stopped \
         -p "${rtmp_stats_port}":80/tcp -p "${rtmp_port}":1935/tcp \
-        alexanderwagnerdev/rtmp-server:beta
+        alexanderwagnerdev/rtmp-server:latest
     fi
 
     health_check rtmp-server
@@ -673,21 +683,21 @@ if [[ "$mainaction" == "1" ]]; then
     volume_data_path="/var/lib/docker/volumes/srtla-server/_data"
     sudo chown -R 3001:3001 "$volume_data_path"
     sudo chmod -R 755 "$volume_data_path"
-    docker_pull_fallback "alexanderwagnerdev/srtla-server:beta" "ghcr.io/alexanderwagnerdev/srtla-server:beta"
+    docker_pull_fallback "alexanderwagnerdev/srtla-server:latest" "ghcr.io/alexanderwagnerdev/srtla-server:latest"
 
     if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
       docker run -d --name srtla-server --restart unless-stopped \
         --label "wud.watch=true" \
         --label "wud.watch.digest=true" \
-        --label "wud.tag.include=^beta$" \
+        --label "wud.tag.include=^latest$" \
         -v /var/lib/docker/volumes/srtla-server/_data:/var/lib/sls \
         -p "${srt_player_port}":4000/udp -p "${srt_sender_port}":4001/udp -p "${srtla_port}":5000/udp -p "${sls_stats_port}":8080/tcp \
-        alexanderwagnerdev/srtla-server:beta
+        alexanderwagnerdev/srtla-server:latest
     else
       docker run -d --name srtla-server --restart unless-stopped \
         -v /var/lib/docker/volumes/srtla-server/_data:/var/lib/sls \
         -p "${srt_player_port}":4000/udp -p "${srt_sender_port}":4001/udp -p "${srtla_port}":5000/udp -p "${sls_stats_port}":8080/tcp \
-        alexanderwagnerdev/srtla-server:beta
+        alexanderwagnerdev/srtla-server:latest
     fi
 
     health_check srtla-server
@@ -766,14 +776,14 @@ if [[ "$mainaction" == "1" ]]; then
     fi
     TZ=$(grep -v '^$' /etc/timezone 2>/dev/null || timedatectl show --property=Timezone --value 2>/dev/null || echo UTC)
 
-    docker_pull_fallback "alexanderwagnerdev/slspanel:beta" "ghcr.io/alexanderwagnerdev/slspanel:beta"
+    docker_pull_fallback "alexanderwagnerdev/slspanel:latest" "ghcr.io/alexanderwagnerdev/slspanel:latest"
 
     if [[ "$enable_login" =~ ^[JjYy] ]]; then
       if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
         docker run -d --name slspanel --restart unless-stopped \
           --label "wud.watch=true" \
           --label "wud.watch.digest=true" \
-          --label "wud.tag.include=^beta$" \
+          --label "wud.tag.include=^latest$" \
           -e REQUIRE_LOGIN=True \
           -e WEB_USERNAME="${slspanel_username}" \
           -e WEB_PASSWORD="${slspanel_password}" \
@@ -786,7 +796,7 @@ if [[ "$mainaction" == "1" ]]; then
           -e SRT_PLAYER_PORT=${srt_player_port} \
           -e SRTLA_PUBLISH_PORT=${srtla_port} \
           -e SLS_STATS_PORT=${sls_stats_port} \
-          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:beta
+          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:latest
       else
         docker run -d --name slspanel --restart unless-stopped \
           -e REQUIRE_LOGIN=True \
@@ -801,14 +811,14 @@ if [[ "$mainaction" == "1" ]]; then
           -e SRT_PLAYER_PORT=${srt_player_port} \
           -e SRTLA_PUBLISH_PORT=${srtla_port} \
           -e SLS_STATS_PORT=${sls_stats_port} \
-          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:beta
+          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:latest
       fi
     else
       if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
         docker run -d --name slspanel --restart unless-stopped \
           --label "wud.watch=true" \
           --label "wud.watch.digest=true" \
-          --label "wud.tag.include=^beta$" \
+          --label "wud.tag.include=^latest$" \
           -e REQUIRE_LOGIN=False \
           -e SLS_API_URL="${slspanel_api_url}" \
           -e SLS_API_KEY="${apikey}" \
@@ -819,7 +829,7 @@ if [[ "$mainaction" == "1" ]]; then
           -e SRT_PLAYER_PORT=${srt_player_port} \
           -e SRTLA_PUBLISH_PORT=${srtla_port} \
           -e SLS_STATS_PORT=${sls_stats_port} \
-          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:beta
+          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:latest
       else
         docker run -d --name slspanel --restart unless-stopped \
           -e REQUIRE_LOGIN=False \
@@ -832,7 +842,7 @@ if [[ "$mainaction" == "1" ]]; then
           -e SRT_PLAYER_PORT=${srt_player_port} \
           -e SRTLA_PUBLISH_PORT=${srtla_port} \
           -e SLS_STATS_PORT=${sls_stats_port} \
-          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:beta
+          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:latest
       fi
     fi
 
