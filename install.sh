@@ -734,7 +734,7 @@ if [[ "$mainaction" == "1" ]]; then
   if [[ "$install_wud" =~ ^[JjYy] ]]; then
     echo -e "$wud_install_msg"
     docker_pull_fallback "getwud/wud:latest" "ghcr.io/getwud/wud:latest"
-    docker run -d --name wud --restart unless-stopped -v "/var/run/docker.sock:/var/run/docker.sock" -e WUD_TRIGGER_DOCKER_LOCAL_PRUNE=true getwud/wud:latest
+    docker run -d --name wud --restart always -v "/var/run/docker.sock:/var/run/docker.sock" -e WUD_TRIGGER_DOCKER_LOCAL_PRUNE=true getwud/wud:latest
   else
     echo -e "$wud_skip_msg"
   fi
