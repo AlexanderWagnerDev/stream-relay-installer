@@ -14,7 +14,7 @@ jobs:
       matrix:
         branch:
           - beta
-          - bown
+          - own
           - main
       fail-fast: false
     steps:
