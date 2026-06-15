@@ -1,0 +1,31 @@
+name: Daily Trigger All Branches
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    strategy:
+      matrix:
+        branch:
+          - beta
+          - bown
+          - main
+      fail-fast: false
+    steps:
+      - name: Trigger test-full-matrix.yml on ${{ matrix.branch }}
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'test-full-matrix.yml',
+              ref: '${{ matrix.branch }}'
+            });
