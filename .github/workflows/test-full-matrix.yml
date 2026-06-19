@@ -16,7 +16,7 @@ jobs:
     name: "Lint: ShellCheck"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install shellcheck
         run: sudo apt-get install -y shellcheck
       - name: Run ShellCheck
@@ -733,7 +733,7 @@ jobs:
             slspanel_login: "n"
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Make script executable
         run: chmod +x ./install.sh
@@ -1190,7 +1190,7 @@ jobs:
             action: uninstall-remove-volumes
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Make script executable & patch set -e
         run: |
@@ -1375,7 +1375,7 @@ jobs:
             lang: de
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Make script executable & patch set -e
         run: |
           chmod +x ./install.sh
