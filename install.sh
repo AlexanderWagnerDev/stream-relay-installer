@@ -456,7 +456,7 @@ function update_services() {
     rtmp_token=$(cat .rtmp_api_token 2>/dev/null || echo "")
     if [[ -z "$rtmp_token" ]]; then
       [[ "$lang" == "de" ]] && echo -e "${INFO}Versuche RTMP API-Token neu zu extrahieren...${NC}" || echo -e "${INFO}Trying to re-extract RTMP API token...${NC}"
-      rtmp_token=$(extract_rtmp_api_token_with_retry)
+      rtmp_token=$(extract_rtmp_api_token_with_retry) || true
       if [[ -n "$rtmp_token" ]]; then
         echo "$rtmp_token" > .rtmp_api_token
         chmod 600 .rtmp_api_token
@@ -777,7 +777,7 @@ if [[ "$mainaction" == "1" ]]; then
       else
         echo -e "${INFO}Waiting for the container to fully initialize...${NC}"
       fi
-      rtmp_token=$(extract_rtmp_api_token_with_retry)
+      rtmp_token=$(extract_rtmp_api_token_with_retry) || true
       if [[ -n "$rtmp_token" ]]; then
         echo "$rtmp_token" > .rtmp_api_token
         chmod 600 .rtmp_api_token
