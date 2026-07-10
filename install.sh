@@ -14,24 +14,24 @@ INFO="${YELLOW}"
 
 function print_ascii_art_de() {
   cat <<"EOF"
-  ____  _                              ____      _               ___           _        _ _           
- / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \  ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
+  ____  _                              ____      _               ___           _        _ _
+ / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \  ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
-  ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
- |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
-                                                         |___/                                                                                                                   
+  ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |
+ |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|
+                                                         |___/
            von AlexanderWagnerDev
 EOF
 }
 
 function print_ascii_art_en() {
   cat <<"EOF"
-  ____  _                              ____      _               ___           _        _ _           
- / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \  ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __ 
+  ____  _                              ____      _               ___           _        _ _
+ / ___|| |_ _ __ ___  __ _ _ __ ___   |  _ \  ___| | __ _ _   _  |_ _|_ __  ___| |_ __ _| | | ___ _ __
  \___ \| __| '__/ _ \/ _` | '_ ` _ \  | |_) / _ \ |/ _` | | | |  | || '_ \/ __| __/ _` | | |/ _ \ '__|
-  ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |   
- |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|   
-                                                         |___/                                                                                                                                                
+  ___) | |_| | |  __/ (_| | | | | | | |  _ <  __/ | (_| | |_| |  | || | | \__ \ || (_| | | |  __/ |
+ |____/ \__|_|  \___|\__,_|_| |_| |_| |_| \_\___|_|\__,_|\__, | |___|_| |_|___/\__\__,_|_|_|\___|_|
+                                                         |___/
            by AlexanderWagnerDev
 EOF
 }
@@ -178,6 +178,56 @@ function extract_api_key_with_retry() {
   return 1
 }
 
+function extract_rtmp_api_token() {
+  local token=""
+  token=$(docker logs rtmp-server 2>/dev/null | grep -A1 "Generated API token" | grep -E '^[A-Za-z0-9]{32,}$' | tail -1 | tr -d '[:space:]')
+  echo "$token"
+}
+
+function extract_rtmp_api_token_with_retry() {
+  local max_attempts=5
+  local wait_seconds=5
+  local attempt=1
+  local token=""
+
+  while [[ $attempt -le $max_attempts ]]; do
+    if [[ "$lang" == "de" ]]; then
+      echo -e "${INFO}Versuche RTMP API-Token zu extrahieren (Versuch $attempt/$max_attempts)...${NC}" >&2
+    else
+      echo -e "${INFO}Trying to extract RTMP API token (attempt $attempt/$max_attempts)...${NC}" >&2
+    fi
+    token=$(extract_rtmp_api_token)
+    if [[ -n "$token" ]]; then
+      echo "$token"
+      return 0
+    fi
+    if [[ $attempt -lt $max_attempts ]]; then
+      if [[ "$lang" == "de" ]]; then
+        echo -e "${INFO}RTMP API-Token noch nicht verfügbar, warte ${wait_seconds}s...${NC}" >&2
+      else
+        echo -e "${INFO}RTMP API token not yet available, waiting ${wait_seconds}s...${NC}" >&2
+      fi
+      sleep "$wait_seconds"
+    fi
+    attempt=$((attempt + 1))
+  done
+
+  echo ""
+  return 1
+}
+
+function get_or_create_rtmppanel_secret() {
+  if [ -f ".rtmppanel_secret" ]; then
+    cat .rtmppanel_secret
+    return
+  fi
+  local secret=""
+  secret=$(openssl rand -hex 32 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(32))' 2>/dev/null)
+  echo "$secret" > .rtmppanel_secret
+  chmod 600 .rtmppanel_secret
+  echo "$secret"
+}
+
 function print_available_services() {
   local app_url="$1"
   local management_port="$2"
@@ -189,6 +239,7 @@ function print_available_services() {
   local p_sls_stats_port="$8"
   local p_rtmp_stats_port="$9"
   local p_rtmp_port="${10}"
+  local p_rtmppanel_port="${11}"
   if [[ "$lang" == "de" ]]; then
     echo -e "${HEADER}Verfügbare Dienste:${NC}"
     echo -e "${SUCCESS}SLSPanel UI: http://${p_public_ip}:${management_port}${NC}"
@@ -198,8 +249,11 @@ function print_available_services() {
     echo -e "${SUCCESS}SRT Sender URL ZUM SENDEN (Beispiel): srt://${p_public_ip}:${p_srt_sender_port}?streamid=livekey${NC}"
     echo -e "${SUCCESS}SRT Player URL ZUM EMPFANGEN (Beispiel): srt://${p_public_ip}:${p_srt_player_port}?streamid=playkey${NC}"
     echo -e "${SUCCESS}SRT/SRTLA Statistiken URL (Beispiel): http://${p_public_ip}:${p_sls_stats_port}/stats/playkey${NC}"
-    echo -e "${SUCCESS}RTMP Statistiken URL: http://${p_public_ip}:${p_rtmp_stats_port}/stats${NC}"
-    echo -e "${SUCCESS}RTMP URL ZUM SENDEN UND EMPFANGEN (Beispiel): rtmp://${p_public_ip}:${p_rtmp_port}/publish/livekey${NC}"
+    echo -e "${SUCCESS}RTMP Statistiken/API URL: http://${p_public_ip}:${p_rtmp_stats_port}/api/v1/health${NC}"
+    echo -e "${SUCCESS}RTMP URL ZUM SENDEN UND EMPFANGEN (Beispiel): rtmp://${p_public_ip}:${p_rtmp_port}/live/DEIN_PUBLISH_KEY${NC}"
+    if [[ -n "$p_rtmppanel_port" ]]; then
+      echo -e "${SUCCESS}RTMPPanel UI: http://${p_public_ip}:${p_rtmppanel_port}${NC}"
+    fi
   else
     echo -e "${HEADER}Available services:${NC}"
     echo -e "${SUCCESS}SLSPanel UI: http://${p_public_ip}:${management_port}${NC}"
@@ -209,8 +263,11 @@ function print_available_services() {
     echo -e "${SUCCESS}SRT Sender URL TO SEND (Example): srt://${p_public_ip}:${p_srt_sender_port}?streamid=livekey${NC}"
     echo -e "${SUCCESS}SRT Player URL TO RECEIVE (Example): srt://${p_public_ip}:${p_srt_player_port}?streamid=playkey${NC}"
     echo -e "${SUCCESS}SRT/SRTLA Statistics URL (Example): http://${p_public_ip}:${p_sls_stats_port}/stats/playkey${NC}"
-    echo -e "${SUCCESS}RTMP Stats URL: http://${p_public_ip}:${p_rtmp_stats_port}/stats${NC}"
-    echo -e "${SUCCESS}RTMP URL FOR SENDING AND RECEIVING (Example): rtmp://${p_public_ip}:${p_rtmp_port}/publish/livekey${NC}"
+    echo -e "${SUCCESS}RTMP Stats/API URL: http://${p_public_ip}:${p_rtmp_stats_port}/api/v1/health${NC}"
+    echo -e "${SUCCESS}RTMP URL FOR SENDING AND RECEIVING (Example): rtmp://${p_public_ip}:${p_rtmp_port}/live/YOUR_PUBLISH_KEY${NC}"
+    if [[ -n "$p_rtmppanel_port" ]]; then
+      echo -e "${SUCCESS}RTMPPanel UI: http://${p_public_ip}:${p_rtmppanel_port}${NC}"
+    fi
   fi
 }
 
@@ -258,7 +315,7 @@ function health_check() {
 }
 
 function stop_services() {
-  for cname in rtmp-server srtla-server slspanel wud; do
+  for cname in rtmp-server srtla-server slspanel rtmppanel wud; do
     if docker ps --format '{{.Names}}' | grep -q "^$cname$"; then
       docker stop "$cname" || true
       [[ "$lang" == "de" ]] && echo -e "${INFO}Container $cname gestoppt.${NC}" || echo -e "${INFO}Stopped container $cname.${NC}"
@@ -267,7 +324,7 @@ function stop_services() {
 }
 
 function start_services() {
-  for cname in rtmp-server srtla-server slspanel wud; do
+  for cname in rtmp-server srtla-server slspanel rtmppanel wud; do
     docker start "$cname" 2>/dev/null || true
     health_check "$cname"
   done
@@ -371,9 +428,9 @@ function recreate_container() {
 function update_services() {
   [[ "$lang" == "de" ]] && echo -e "${HEADER}=== Container-Update wird gestartet ===${NC}" || echo -e "${HEADER}=== Starting container update ===${NC}"
 
-  local containers=("rtmp-server" "srtla-server" "slspanel" "wud")
-  local images=("alexanderwagnerdev/rtmp-server:latest" "alexanderwagnerdev/srtla-server:latest" "alexanderwagnerdev/slspanel:latest" "getwud/wud:latest")
-  local fallback_images=("ghcr.io/alexanderwagnerdev/rtmp-server:latest" "ghcr.io/alexanderwagnerdev/srtla-server:latest" "ghcr.io/alexanderwagnerdev/slspanel:latest" "ghcr.io/getwud/wud:latest")
+  local containers=("rtmp-server" "srtla-server" "slspanel" "rtmppanel" "wud")
+  local images=("alexanderwagnerdev/rtmp-server:beta" "alexanderwagnerdev/srtla-server:beta" "alexanderwagnerdev/slspanel:beta" "alexanderwagnerdev/rtmppanel:beta" "getwud/wud:latest")
+  local fallback_images=("ghcr.io/alexanderwagnerdev/rtmp-server:beta" "ghcr.io/alexanderwagnerdev/srtla-server:beta" "ghcr.io/alexanderwagnerdev/slspanel:beta" "ghcr.io/alexanderwagnerdev/rtmppanel:beta" "ghcr.io/getwud/wud:latest")
 
   for i in "${!containers[@]}"; do
     recreate_container "${containers[$i]}" "${images[$i]}" "${fallback_images[$i]}"
@@ -393,16 +450,30 @@ function update_services() {
       fi
     fi
   fi
+
+  if docker ps -a --format '{{.Names}}' | grep -q "^rtmp-server$"; then
+    local rtmp_token
+    rtmp_token=$(cat .rtmp_api_token 2>/dev/null || echo "")
+    if [[ -z "$rtmp_token" ]]; then
+      [[ "$lang" == "de" ]] && echo -e "${INFO}Versuche RTMP API-Token neu zu extrahieren...${NC}" || echo -e "${INFO}Trying to re-extract RTMP API token...${NC}"
+      rtmp_token=$(extract_rtmp_api_token_with_retry) || true
+      if [[ -n "$rtmp_token" ]]; then
+        echo "$rtmp_token" > .rtmp_api_token
+        chmod 600 .rtmp_api_token
+        [[ "$lang" == "de" ]] && echo -e "${SUCCESS}RTMP API-Token erfolgreich extrahiert.${NC}" || echo -e "${SUCCESS}RTMP API token successfully extracted.${NC}"
+      fi
+    fi
+  fi
 }
 
 function uninstall_services() {
-  for cname in rtmp-server srtla-server slspanel wud; do
+  for cname in rtmp-server srtla-server slspanel rtmppanel wud; do
     if docker ps -a --format '{{.Names}}' | grep -q "^$cname$"; then
       docker rm -f "$cname" || true
       [[ "$lang" == "de" ]] && echo -e "${INFO}Container $cname entfernt.${NC}" || echo -e "${INFO}Removed container $cname.${NC}"
     fi
   done
-  for img in alexanderwagnerdev/rtmp-server alexanderwagnerdev/srtla-server alexanderwagnerdev/slspanel getwud/wud; do
+  for img in alexanderwagnerdev/rtmp-server alexanderwagnerdev/srtla-server alexanderwagnerdev/slspanel alexanderwagnerdev/rtmppanel getwud/wud; do
     docker rmi -f "$img" 2>/dev/null || true
     docker rmi -f "ghcr.io/$img" 2>/dev/null || true
   done
@@ -416,11 +487,23 @@ function uninstall_services() {
     fi
   fi
 
+  if [ -f ".rtmp_api_token" ]; then
+    rm -f ".rtmp_api_token"
+    if [[ "$lang" == "de" ]]; then
+      echo -e "${SUCCESS}RTMP API-Token Datei (.rtmp_api_token) gelöscht.${NC}"
+    else
+      echo -e "${SUCCESS}RTMP API token file (.rtmp_api_token) deleted.${NC}"
+    fi
+  fi
+
   if [[ "$lang" == "de" ]]; then
     read -rp $'\033[1;33mSollen auch Volumes gelöscht werden? (j/n):\033[0m ' rmvol
     if [[ "$rmvol" =~ ^[Jj] ]]; then
       docker volume rm srtla-server 2>/dev/null || true
-      echo -e "${SUCCESS}Docker-Volume srtla-server entfernt.${NC}"
+      docker volume rm rtmp-server-data 2>/dev/null || true
+      docker volume rm rtmppanel-data 2>/dev/null || true
+      rm -f ".rtmppanel_secret"
+      echo -e "${SUCCESS}Docker-Volumes (srtla-server, rtmp-server-data, rtmppanel-data) entfernt.${NC}"
     else
       echo -e "${INFO}Volumes bleiben erhalten.${NC}"
     fi
@@ -429,7 +512,10 @@ function uninstall_services() {
     read -rp $'\033[1;33mShould volumes be deleted as well? (y/n):\033[0m ' rmvol
     if [[ "$rmvol" =~ ^[Yy] ]]; then
       docker volume rm srtla-server 2>/dev/null || true
-      echo -e "${SUCCESS}Docker volume srtla-server removed.${NC}"
+      docker volume rm rtmp-server-data 2>/dev/null || true
+      docker volume rm rtmppanel-data 2>/dev/null || true
+      rm -f ".rtmppanel_secret"
+      echo -e "${SUCCESS}Docker volumes (srtla-server, rtmp-server-data, rtmppanel-data) removed.${NC}"
     else
       echo -e "${INFO}Volumes are kept.${NC}"
     fi
@@ -458,7 +544,7 @@ if [[ "$lang" == "de" ]]; then
   rtmp_prompt="RTMP-Server Docker Container installieren und starten? (j/n):"
   srtla_prompt="SRTLA-Server Docker Container installieren und starten? (j/n):"
   wud_prompt="WUD Container (automatische Updates) installieren und starten? (j/n):"
-  wud_labels_prompt="Sollen die Container (RTMP, SRTLA, SLSPanel) von WUD überwacht werden? (j/n):"
+  wud_labels_prompt="Sollen die Container (RTMP, SRTLA, SLSPanel, RTMPPanel) von WUD überwacht werden? (j/n):"
   ipv6_prompt="Docker IPv6 Unterstützung aktivieren? (j/n):"
   use_default_ports_prompt="Standardports verwenden? (j/n):"
   manual_ip_prompt="Möchtest du eine Domain oder IP manuell eingeben? (j/n):"
@@ -467,6 +553,10 @@ if [[ "$lang" == "de" ]]; then
   slspanel_login_prompt="Login für SLSPanel aktivieren? (j/n): "
   slspanel_username_prompt="Benutzername für SLSPanel Admin: "
   slspanel_password_prompt="Passwort für SLSPanel Admin: "
+  rtmppanel_install_prompt="RTMPPanel installieren und starten? (j/n): "
+  rtmppanel_login_prompt="Login für RTMPPanel aktivieren? (j/n): "
+  rtmppanel_username_prompt="Benutzername für RTMPPanel Admin: "
+  rtmppanel_password_prompt="Passwort für RTMPPanel Admin: "
   done_msg="Setup abgeschlossen."
   docker_install_msg="Docker Installation wird gestartet..."
   docker_skip_msg="Docker wird nicht installiert."
@@ -476,6 +566,8 @@ if [[ "$lang" == "de" ]]; then
   srtla_skip_msg="SRTLA-Server wird nicht installiert."
   wud_install_msg="Starte WUD Docker-Container..."
   wud_skip_msg="WUD wird nicht installiert."
+  rtmppanel_install_msg="Starte RTMPPanel Docker-Container..."
+  rtmppanel_skip_msg="RTMPPanel wird nicht installiert."
   ipv6_enable_msg="Docker IPv6 Unterstützung wird aktiviert..."
   ipv6_skip_msg="Docker IPv6 Unterstützung wird nicht aktiviert."
   restart_msg="${YELLOW}Bitte beachten: Nach Docker-Installation ist evtl. ein Neustart oder eine neue Anmeldung nötig, damit Docker-Gruppenrechte aktiv werden.${NC}"
@@ -484,16 +576,17 @@ if [[ "$lang" == "de" ]]; then
     "Port für SRT-Sender (Standard: 4001)"
     "Port für SRTLA (Standard: 5000)"
     "Port für SLS Stats (Standard: 8789)"
-    "Port für RTMP-Server Stats/Web (Standard: 8090)"
+    "Port für RTMP-Server Stats/API (Standard: 8090)"
     "Port für RTMP (Standard: 1935)"
     "Port für SLSPanel WebUI (Standard: 8000)"
+    "Port für RTMPPanel WebUI (Standard: 8001)"
   )
 else
   docker_prompt="Install Docker? (y/n):"
   rtmp_prompt="Install and start RTMP Server Docker container? (y/n):"
   srtla_prompt="Install and start SRTLA Server Docker container? (y/n):"
   wud_prompt="Install and start WUD container (automatic updates)? (y/n):"
-  wud_labels_prompt="Should the containers (RTMP, SRTLA, SLSPanel) be monitored by WUD? (y/n):"
+  wud_labels_prompt="Should the containers (RTMP, SRTLA, SLSPanel, RTMPPanel) be monitored by WUD? (y/n):"
   ipv6_prompt="Enable Docker IPv6 support? (y/n):"
   use_default_ports_prompt="Use default ports? (y/n):"
   manual_ip_prompt="Do you want to enter a domain or IP manually? (y/n):"
@@ -502,6 +595,10 @@ else
   slspanel_login_prompt="Enable login for SLSPanel? (y/n): "
   slspanel_username_prompt="Username for SLSPanel admin: "
   slspanel_password_prompt="Password for SLSPanel admin: "
+  rtmppanel_install_prompt="Install and start RTMPPanel? (y/n): "
+  rtmppanel_login_prompt="Enable login for RTMPPanel? (y/n): "
+  rtmppanel_username_prompt="Username for RTMPPanel admin: "
+  rtmppanel_password_prompt="Password for RTMPPanel admin: "
   done_msg="Setup completed."
   docker_install_msg="Starting Docker installation..."
   docker_skip_msg="Skipping Docker installation."
@@ -511,6 +608,8 @@ else
   srtla_skip_msg="Skipping SRTLA Server installation."
   wud_install_msg="Starting WUD Docker container..."
   wud_skip_msg="Skipping WUD installation."
+  rtmppanel_install_msg="Starting RTMPPanel Docker container..."
+  rtmppanel_skip_msg="Skipping RTMPPanel installation."
   ipv6_enable_msg="Enabling Docker IPv6 support..."
   ipv6_skip_msg="Not enabling Docker IPv6 support."
   restart_msg="${YELLOW}Please note: After Docker installation a reboot or re-login might be necessary to activate Docker group permissions.${NC}"
@@ -519,9 +618,10 @@ else
     "Port for SRT Sender (default: 4001)"
     "Port for SRTLA (default: 5000)"
     "Port for SLS Stats (default: 8789)"
-    "Port for RTMP Server Stats/Web (default: 8090)"
+    "Port for RTMP Server Stats/API (default: 8090)"
     "Port for RTMP (default: 1935)"
     "Port for SLSPanel WebUI (default: 8000)"
+    "Port for RTMPPanel WebUI (default: 8001)"
   )
 fi
 
@@ -605,6 +705,7 @@ if [[ "$mainaction" == "1" ]]; then
     rtmp_stats_port=8090
     rtmp_port=1935
     slspanel_port=8000
+    rtmppanel_port=8001
   else
     srt_player_port=$(read_port "${port_prompts[0]}" 4000)
     srt_sender_port=$(read_port "${port_prompts[1]}" 4001)
@@ -613,6 +714,7 @@ if [[ "$mainaction" == "1" ]]; then
     rtmp_stats_port=$(read_port "${port_prompts[4]}" 8090)
     rtmp_port=$(read_port "${port_prompts[5]}" 1935)
     slspanel_port=$(read_port "${port_prompts[6]}" 8000)
+    rtmppanel_port=$(read_port "${port_prompts[7]}" 8001)
   fi
 
   MANUAL_IP=""
@@ -650,22 +752,54 @@ if [[ "$mainaction" == "1" ]]; then
   install_rtmp=${install_rtmp:-n}
   if [[ "$install_rtmp" =~ ^[JjYy] ]]; then
     echo -e "$rtmp_install_msg"
-    docker_pull_fallback "alexanderwagnerdev/rtmp-server:latest" "ghcr.io/alexanderwagnerdev/rtmp-server:latest"
+    docker_pull_fallback "alexanderwagnerdev/rtmp-server:beta" "ghcr.io/alexanderwagnerdev/rtmp-server:beta"
 
     if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
       docker run -d --name rtmp-server --restart unless-stopped \
         --label "wud.watch=true" \
         --label "wud.watch.digest=true" \
-        --label "wud.tag.include=^latest$" \
-        -p "${rtmp_stats_port}":80/tcp -p "${rtmp_port}":1935/tcp \
-        alexanderwagnerdev/rtmp-server:latest
+        --label "wud.tag.include=^beta$" \
+        -v rtmp-server-data:/data \
+        -p "${rtmp_stats_port}":8080/tcp -p "${rtmp_port}":1935/tcp \
+        alexanderwagnerdev/rtmp-server:beta
     else
       docker run -d --name rtmp-server --restart unless-stopped \
-        -p "${rtmp_stats_port}":80/tcp -p "${rtmp_port}":1935/tcp \
-        alexanderwagnerdev/rtmp-server:latest
+        -v rtmp-server-data:/data \
+        -p "${rtmp_stats_port}":8080/tcp -p "${rtmp_port}":1935/tcp \
+        alexanderwagnerdev/rtmp-server:beta
     fi
 
     health_check rtmp-server
+
+    if [ ! -f ".rtmp_api_token" ]; then
+      if [[ "$lang" == "de" ]]; then
+        echo -e "${INFO}Warte auf vollständiges Initialisieren des Containers...${NC}"
+      else
+        echo -e "${INFO}Waiting for the container to fully initialize...${NC}"
+      fi
+      rtmp_token=$(extract_rtmp_api_token_with_retry) || true
+      if [[ -n "$rtmp_token" ]]; then
+        echo "$rtmp_token" > .rtmp_api_token
+        chmod 600 .rtmp_api_token
+        if [[ "$lang" == "de" ]]; then
+          echo -e "${SUCCESS}RTMP API-Token erfolgreich extrahiert und gespeichert.${NC}"
+        else
+          echo -e "${SUCCESS}RTMP API token successfully extracted and saved.${NC}"
+        fi
+      else
+        if [[ "$lang" == "de" ]]; then
+          echo -e "${ERROR}RTMP API-Token konnte nicht extrahiert werden.${NC}"
+        else
+          echo -e "${ERROR}RTMP API token could not be extracted.${NC}"
+        fi
+      fi
+    else
+      if [[ "$lang" == "de" ]]; then
+        echo -e "${SUCCESS}RTMP API-Token bereits vorhanden in .rtmp_api_token${NC}"
+      else
+        echo -e "${SUCCESS}RTMP API token already present in .rtmp_api_token${NC}"
+      fi
+    fi
   else
     echo -e "$rtmp_skip_msg"
   fi
@@ -680,21 +814,21 @@ if [[ "$mainaction" == "1" ]]; then
     volume_data_path="/var/lib/docker/volumes/srtla-server/_data"
     sudo chown -R 3001:3001 "$volume_data_path"
     sudo chmod -R 755 "$volume_data_path"
-    docker_pull_fallback "alexanderwagnerdev/srtla-server:latest" "ghcr.io/alexanderwagnerdev/srtla-server:latest"
+    docker_pull_fallback "alexanderwagnerdev/srtla-server:beta" "ghcr.io/alexanderwagnerdev/srtla-server:beta"
 
     if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
       docker run -d --name srtla-server --restart unless-stopped \
         --label "wud.watch=true" \
         --label "wud.watch.digest=true" \
-        --label "wud.tag.include=^latest$" \
+        --label "wud.tag.include=^beta$" \
         -v /var/lib/docker/volumes/srtla-server/_data:/var/lib/sls \
         -p "${srt_player_port}":4000/udp -p "${srt_sender_port}":4001/udp -p "${srtla_port}":5000/udp -p "${sls_stats_port}":8080/tcp \
-        alexanderwagnerdev/srtla-server:latest
+        alexanderwagnerdev/srtla-server:beta
     else
       docker run -d --name srtla-server --restart unless-stopped \
         -v /var/lib/docker/volumes/srtla-server/_data:/var/lib/sls \
         -p "${srt_player_port}":4000/udp -p "${srt_sender_port}":4001/udp -p "${srtla_port}":5000/udp -p "${sls_stats_port}":8080/tcp \
-        alexanderwagnerdev/srtla-server:latest
+        alexanderwagnerdev/srtla-server:beta
     fi
 
     health_check srtla-server
@@ -773,14 +907,14 @@ if [[ "$mainaction" == "1" ]]; then
     fi
     TZ=$(grep -v '^$' /etc/timezone 2>/dev/null || timedatectl show --property=Timezone --value 2>/dev/null || echo UTC)
 
-    docker_pull_fallback "alexanderwagnerdev/slspanel:latest" "ghcr.io/alexanderwagnerdev/slspanel:latest"
+    docker_pull_fallback "alexanderwagnerdev/slspanel:beta" "ghcr.io/alexanderwagnerdev/slspanel:beta"
 
     if [[ "$enable_login" =~ ^[JjYy] ]]; then
       if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
         docker run -d --name slspanel --restart unless-stopped \
           --label "wud.watch=true" \
           --label "wud.watch.digest=true" \
-          --label "wud.tag.include=^latest$" \
+          --label "wud.tag.include=^beta$" \
           -e REQUIRE_LOGIN=True \
           -e WEB_USERNAME="${slspanel_username}" \
           -e WEB_PASSWORD="${slspanel_password}" \
@@ -793,7 +927,7 @@ if [[ "$mainaction" == "1" ]]; then
           -e SRT_PLAYER_PORT=${srt_player_port} \
           -e SRTLA_PUBLISH_PORT=${srtla_port} \
           -e SLS_STATS_PORT=${sls_stats_port} \
-          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:latest
+          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:beta
       else
         docker run -d --name slspanel --restart unless-stopped \
           -e REQUIRE_LOGIN=True \
@@ -808,14 +942,14 @@ if [[ "$mainaction" == "1" ]]; then
           -e SRT_PLAYER_PORT=${srt_player_port} \
           -e SRTLA_PUBLISH_PORT=${srtla_port} \
           -e SLS_STATS_PORT=${sls_stats_port} \
-          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:latest
+          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:beta
       fi
     else
       if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
         docker run -d --name slspanel --restart unless-stopped \
           --label "wud.watch=true" \
           --label "wud.watch.digest=true" \
-          --label "wud.tag.include=^latest$" \
+          --label "wud.tag.include=^beta$" \
           -e REQUIRE_LOGIN=False \
           -e SLS_API_URL="${slspanel_api_url}" \
           -e SLS_API_KEY="${apikey}" \
@@ -826,7 +960,7 @@ if [[ "$mainaction" == "1" ]]; then
           -e SRT_PLAYER_PORT=${srt_player_port} \
           -e SRTLA_PUBLISH_PORT=${srtla_port} \
           -e SLS_STATS_PORT=${sls_stats_port} \
-          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:latest
+          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:beta
       else
         docker run -d --name slspanel --restart unless-stopped \
           -e REQUIRE_LOGIN=False \
@@ -839,7 +973,7 @@ if [[ "$mainaction" == "1" ]]; then
           -e SRT_PLAYER_PORT=${srt_player_port} \
           -e SRTLA_PUBLISH_PORT=${srtla_port} \
           -e SLS_STATS_PORT=${sls_stats_port} \
-          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:latest
+          -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:beta
       fi
     fi
 
@@ -852,6 +986,112 @@ if [[ "$mainaction" == "1" ]]; then
     fi
   fi
 
+  read -rp "$rtmppanel_install_prompt" install_rtmppanel
+  install_rtmppanel=${install_rtmppanel:-n}
+  if [[ "$install_rtmppanel" =~ ^[JjYy] ]]; then
+
+    read -rp "$rtmppanel_login_prompt" rtmppanel_enable_login
+    rtmppanel_enable_login=${rtmppanel_enable_login:-n}
+
+    if [[ "$rtmppanel_enable_login" =~ ^[JjYy] ]]; then
+      read -rp "$rtmppanel_username_prompt" rtmppanel_username
+      rtmppanel_username=${rtmppanel_username:-admin}
+      read -rsp "$rtmppanel_password_prompt" rtmppanel_password
+      echo ""
+    else
+      rtmppanel_username=""
+      rtmppanel_password=""
+    fi
+
+    if [[ "$lang" == "de" ]]; then
+      echo -e "${INFO}Starte RTMPPanel Docker-Container...${NC}"
+    else
+      echo -e "${INFO}Starting RTMPPanel Docker container...${NC}"
+    fi
+
+    rtmp_api_url="http://${public_ip}:${rtmp_stats_port}"
+    rtmp_token=$(cat .rtmp_api_token 2>/dev/null || echo "")
+    if [[ -z "$rtmp_token" ]]; then
+      if [[ "$lang" == "de" ]]; then
+        echo -e "${YELLOW}Warnung: Kein RTMP API-Token gefunden (.rtmp_api_token). Stelle sicher, dass der RTMP-Server installiert wurde. RTMPPanel wird ohne gültigen Token gestartet.${NC}"
+      else
+        echo -e "${YELLOW}Warning: No RTMP API token found (.rtmp_api_token). Make sure the RTMP server was installed. RTMPPanel will start without a valid token.${NC}"
+      fi
+    fi
+    rtmppanel_secret=$(get_or_create_rtmppanel_secret)
+    TZ=$(grep -v '^$' /etc/timezone 2>/dev/null || timedatectl show --property=Timezone --value 2>/dev/null || echo UTC)
+
+    docker_pull_fallback "alexanderwagnerdev/rtmppanel:beta" "ghcr.io/alexanderwagnerdev/rtmppanel:beta"
+
+    if [[ "$rtmppanel_enable_login" =~ ^[JjYy] ]]; then
+      if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
+        docker run -d --name rtmppanel --restart unless-stopped \
+          --label "wud.watch=true" \
+          --label "wud.watch.digest=true" \
+          --label "wud.tag.include=^beta$" \
+          -e REQUIRE_LOGIN=True \
+          -e USERNAME="${rtmppanel_username}" \
+          -e PASSWORD="${rtmppanel_password}" \
+          -e SECRET_KEY="${rtmppanel_secret}" \
+          -e LRTMP2_API_URL="${rtmp_api_url}" \
+          -e LRTMP2_API_TOKEN="${rtmp_token}" \
+          -e LRTMP2_DOMAIN="${public_ip}" \
+          -e LRTMP2_RTMP_PORT="${rtmp_port}" \
+          -e LANG="${lang}" \
+          -e TZ="${TZ}" \
+          -v rtmppanel-data:/data \
+          -p ${rtmppanel_port}:8000/tcp alexanderwagnerdev/rtmppanel:beta
+      else
+        docker run -d --name rtmppanel --restart unless-stopped \
+          -e REQUIRE_LOGIN=True \
+          -e USERNAME="${rtmppanel_username}" \
+          -e PASSWORD="${rtmppanel_password}" \
+          -e SECRET_KEY="${rtmppanel_secret}" \
+          -e LRTMP2_API_URL="${rtmp_api_url}" \
+          -e LRTMP2_API_TOKEN="${rtmp_token}" \
+          -e LRTMP2_DOMAIN="${public_ip}" \
+          -e LRTMP2_RTMP_PORT="${rtmp_port}" \
+          -e LANG="${lang}" \
+          -e TZ="${TZ}" \
+          -v rtmppanel-data:/data \
+          -p ${rtmppanel_port}:8000/tcp alexanderwagnerdev/rtmppanel:beta
+      fi
+    else
+      if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
+        docker run -d --name rtmppanel --restart unless-stopped \
+          --label "wud.watch=true" \
+          --label "wud.watch.digest=true" \
+          --label "wud.tag.include=^beta$" \
+          -e REQUIRE_LOGIN=False \
+          -e SECRET_KEY="${rtmppanel_secret}" \
+          -e LRTMP2_API_URL="${rtmp_api_url}" \
+          -e LRTMP2_API_TOKEN="${rtmp_token}" \
+          -e LRTMP2_DOMAIN="${public_ip}" \
+          -e LRTMP2_RTMP_PORT="${rtmp_port}" \
+          -e LANG="${lang}" \
+          -e TZ="${TZ}" \
+          -v rtmppanel-data:/data \
+          -p ${rtmppanel_port}:8000/tcp alexanderwagnerdev/rtmppanel:beta
+      else
+        docker run -d --name rtmppanel --restart unless-stopped \
+          -e REQUIRE_LOGIN=False \
+          -e SECRET_KEY="${rtmppanel_secret}" \
+          -e LRTMP2_API_URL="${rtmp_api_url}" \
+          -e LRTMP2_API_TOKEN="${rtmp_token}" \
+          -e LRTMP2_DOMAIN="${public_ip}" \
+          -e LRTMP2_RTMP_PORT="${rtmp_port}" \
+          -e LANG="${lang}" \
+          -e TZ="${TZ}" \
+          -v rtmppanel-data:/data \
+          -p ${rtmppanel_port}:8000/tcp alexanderwagnerdev/rtmppanel:beta
+      fi
+    fi
+
+    health_check rtmppanel
+  else
+    echo -e "$rtmppanel_skip_msg"
+  fi
+
   print_available_services \
     "$app_url" \
     "$slspanel_port" \
@@ -862,7 +1102,8 @@ if [[ "$mainaction" == "1" ]]; then
     "$srt_player_port" \
     "$sls_stats_port" \
     "$rtmp_stats_port" \
-    "$rtmp_port"
+    "$rtmp_port" \
+    "$rtmppanel_port"
 
   echo -e "$done_msg"
   echo -e "$restart_msg"
