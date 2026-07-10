@@ -159,6 +159,23 @@ jobs:
             slspanel: "y"
             slspanel_login: "n"
 
+          # RTMPPanel only (no login)
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: rtmppanel-only-no-login
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "n"
+            srtla: "n"
+            slspanel: "n"
+            slspanel_login: "n"
+
           # RTMP + SRTLA only (no SLSPanel, no WUD)
           - arch: amd64
             runner: ubuntu-latest
@@ -331,6 +348,23 @@ jobs:
             rtmp: "n"
             srtla: "n"
             slspanel: "j"
+            slspanel_login: "n"
+
+          # RTMPPanel only (no login)
+          - arch: amd64
+            runner: ubuntu-latest
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: rtmppanel-only-no-login
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "n"
+            srtla: "n"
+            slspanel: "n"
             slspanel_login: "n"
 
           # RTMP + SRTLA only (no SLSPanel, no WUD)
@@ -507,6 +541,23 @@ jobs:
             slspanel: "y"
             slspanel_login: "n"
 
+          # RTMPPanel only (no login)
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: en
+            lang_input: "2"
+            yes: "y"
+            no: "n"
+            variant: rtmppanel-only-no-login
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "n"
+            srtla: "n"
+            slspanel: "n"
+            slspanel_login: "n"
+
           # RTMP + SRTLA only (no SLSPanel, no WUD)
           - arch: arm64
             runner: ubuntu-24.04-arm
@@ -681,6 +732,23 @@ jobs:
             slspanel: "j"
             slspanel_login: "n"
 
+          # RTMPPanel only (no login)
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            lang: de
+            lang_input: "1"
+            yes: "j"
+            no: "n"
+            variant: rtmppanel-only-no-login
+            sys_update: "n"
+            docker_install: "n"
+            wud: "n"
+            wud_labels: "n"
+            rtmp: "n"
+            srtla: "n"
+            slspanel: "n"
+            slspanel_login: "n"
+
           # RTMP + SRTLA only (no SLSPanel, no WUD)
           - arch: arm64
             runner: ubuntu-24.04-arm
@@ -738,8 +806,8 @@ jobs:
       - name: Make script executable
         run: chmod +x ./install.sh
 
-      #- name: Patch set -e for CI pipefail compatibility
-      #  run: sed -i 's/^set -e$/set -eo pipefail/' install.sh
+     # - name: Patch set -e for CI pipefail compatibility
+     #   run: sed -i 's/^set -e$/set -eo pipefail/' install.sh
 
       - name: Ensure Docker is available
         run: |
@@ -768,6 +836,10 @@ jobs:
           ${{ matrix.slspanel_login }}
           admin
           password
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
+          admin
+          password
           SCRIPT_EOF
 
       # -- Variant: all-with-update-no-docker ------
@@ -793,6 +865,10 @@ jobs:
           ${{ matrix.slspanel_login }}
           admin
           password
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
+          admin
+          password
           SCRIPT_EOF
 
       # -- Variant: all-with-docker-no-update ------
@@ -815,6 +891,10 @@ jobs:
           ${{ matrix.srtla }}
           ${{ matrix.slspanel }}
           ${{ matrix.slspanel_login }}
+          admin
+          password
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
           admin
           password
           SCRIPT_EOF
@@ -842,6 +922,10 @@ jobs:
           ${{ matrix.slspanel_login }}
           admin
           password
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
+          admin
+          password
           SCRIPT_EOF
 
       # -- Variant: rtmp-only ----------------------
@@ -860,6 +944,7 @@ jobs:
           ${{ matrix.no }}
           ${{ matrix.no }}
           ${{ matrix.yes }}
+          ${{ matrix.no }}
           ${{ matrix.no }}
           ${{ matrix.no }}
           SCRIPT_EOF
@@ -882,6 +967,7 @@ jobs:
           ${{ matrix.no }}
           ${{ matrix.yes }}
           ${{ matrix.no }}
+          ${{ matrix.no }}
           SCRIPT_EOF
 
       # -- Variant: slspanel-only-no-login ---------
@@ -897,6 +983,29 @@ jobs:
           ${{ matrix.no }}
           ${{ matrix.no }}
           ${{ matrix.yes }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          SCRIPT_EOF
+
+      # -- Variant: rtmppanel-only-no-login --------
+      - name: "Run install (rtmppanel-only-no-login)"
+        if: matrix.variant == 'rtmppanel-only-no-login'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          ./install.sh <<'SCRIPT_EOF'
+          ${{ matrix.lang_input }}
+          1
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
           ${{ matrix.no }}
           ${{ matrix.no }}
           ${{ matrix.no }}
@@ -923,6 +1032,7 @@ jobs:
           ${{ matrix.yes }}
           ${{ matrix.yes }}
           ${{ matrix.no }}
+          ${{ matrix.no }}
           SCRIPT_EOF
 
       # -- Variant: all-no-wud-no-login ------------
@@ -944,6 +1054,8 @@ jobs:
           ${{ matrix.yes }}
           ${{ matrix.yes }}
           ${{ matrix.no }}
+          ${{ matrix.yes }}
+          ${{ matrix.no }}
           SCRIPT_EOF
 
       # -- Variant: wud-only -----------------------
@@ -961,6 +1073,7 @@ jobs:
           ${{ matrix.yes }}
           ${{ matrix.no }}
           ${{ matrix.yes }}
+          ${{ matrix.no }}
           ${{ matrix.no }}
           ${{ matrix.no }}
           ${{ matrix.no }}
@@ -986,17 +1099,19 @@ jobs:
           }
           case "$VARIANT" in
             all-no-docker-no-update|all-with-update-no-docker|all-with-docker-no-update|all-with-docker-and-update)
-              for c in rtmp-server srtla-server slspanel wud; do check_container "$c"; done ;;
+              for c in rtmp-server srtla-server slspanel rtmppanel wud; do check_container "$c"; done ;;
             rtmp-only)
               check_container "rtmp-server" ;;
             srtla-only)
               check_container "srtla-server" ;;
             slspanel-only-no-login)
               check_container "slspanel" ;;
+            rtmppanel-only-no-login)
+              check_container "rtmppanel" ;;
             rtmp-srtla-only)
               for c in rtmp-server srtla-server; do check_container "$c"; done ;;
             all-no-wud-no-login)
-              for c in rtmp-server srtla-server slspanel; do check_container "$c"; done ;;
+              for c in rtmp-server srtla-server slspanel rtmppanel; do check_container "$c"; done ;;
             wud-only)
               check_container "wud" ;;
           esac
@@ -1029,10 +1144,32 @@ jobs:
             echo "⚠️  .apikey not found (Container evtl. container may still be initializing)"
           fi
 
+      - name: Assert .rtmp_api_token exists (RTMP variants)
+        if: |
+          matrix.variant == 'all-no-docker-no-update' ||
+          matrix.variant == 'all-with-update-no-docker' ||
+          matrix.variant == 'all-with-docker-no-update' ||
+          matrix.variant == 'all-with-docker-and-update' ||
+          matrix.variant == 'rtmp-only' ||
+          matrix.variant == 'rtmp-srtla-only' ||
+          matrix.variant == 'all-no-wud-no-login'
+        run: |
+          sleep 8
+          if [ -f ".rtmp_api_token" ]; then
+            TOKEN=$(cat .rtmp_api_token)
+            if [ -n "$TOKEN" ]; then
+              echo "✅ .rtmp_api_token exists and is non-empty (${#TOKEN} chars)"
+            else
+              echo "⚠️  .rtmp_api_token exists but is empty"
+            fi
+          else
+            echo "⚠️  .rtmp_api_token not found (container may still be initializing)"
+          fi
+
       - name: Container health summary
         run: |
           echo "=== Container Health ==="
-          for cname in rtmp-server srtla-server slspanel wud; do
+          for cname in rtmp-server srtla-server slspanel rtmppanel wud; do
             if docker ps --format '{{.Names}}' | grep -q "^${cname}$"; then
               STATUS=$(docker inspect --format='{{.State.Status}}' "$cname" 2>/dev/null || echo "unknown")
               HEALTH=$(docker inspect --format='{{.State.Health.Status}}' "$cname" 2>/dev/null || echo "no healthcheck")
@@ -1044,7 +1181,7 @@ jobs:
         if: failure()
         run: |
           echo "=== Container Logs ==="
-          for cname in rtmp-server srtla-server slspanel wud; do
+          for cname in rtmp-server srtla-server slspanel rtmppanel wud; do
             if docker ps -a --format '{{.Names}}' | grep -q "^${cname}$"; then
               echo "--- $cname ---"
               docker logs --tail 50 "$cname" 2>&1 || true
@@ -1222,6 +1359,10 @@ jobs:
           ${{ matrix.yes }}
           admin
           password
+          ${{ matrix.yes }}
+          ${{ matrix.yes }}
+          admin
+          password
           SCRIPT_EOF
 
       - name: Wait for containers to be ready
@@ -1238,7 +1379,7 @@ jobs:
           echo "=== Containers after stop ==="
           docker ps -a --format "table {{.Names}}\t{{.Status}}"
           FAILED=0
-          for c in rtmp-server srtla-server slspanel; do
+          for c in rtmp-server srtla-server slspanel rtmppanel; do
             STATUS=$(docker inspect --format='{{.State.Status}}' "$c" 2>/dev/null || echo "missing")
             if [ "$STATUS" = "exited" ] || [ "$STATUS" = "missing" ]; then
               echo "✅ $c is stopped ($STATUS)"
@@ -1266,7 +1407,7 @@ jobs:
           echo "=== Containers after start ==="
           docker ps --format "table {{.Names}}\t{{.Status}}"
           FAILED=0
-          for c in rtmp-server srtla-server slspanel; do
+          for c in rtmp-server srtla-server slspanel rtmppanel; do
             if docker ps --format '{{.Names}}' | grep -q "^${c}$"; then
               echo "✅ $c is running"
             else
@@ -1287,7 +1428,7 @@ jobs:
           echo "=== Containers after update ==="
           docker ps --format "table {{.Names}}\t{{.Status}}"
           FAILED=0
-          for c in rtmp-server srtla-server slspanel; do
+          for c in rtmp-server srtla-server slspanel rtmppanel; do
             if docker ps --format '{{.Names}}' | grep -q "^${c}$"; then
               echo "✅ $c is running after update"
             else
@@ -1309,11 +1450,13 @@ jobs:
           echo "=== Containers after uninstall ==="
           docker ps -a
           docker volume ls
-          if docker volume ls | grep -q "srtla-server"; then
-            echo "✅ Volume srtla-server still exists (correct)"
-          else
-            echo "ℹ️  Volume srtla-server not found"
-          fi
+          for v in srtla-server rtmp-server-data rtmppanel-data; do
+            if docker volume ls | grep -q "$v"; then
+              echo "✅ Volume $v still exists (correct)"
+            else
+              echo "ℹ️  Volume $v not found"
+            fi
+          done
 
       # ── Action: uninstall-remove-volumes ─────
       - name: "Lifecycle: uninstall (remove volumes)"
@@ -1327,17 +1470,31 @@ jobs:
           echo "=== Containers after uninstall ==="
           docker ps -a
           docker volume ls
+          FAILED=0
           if docker volume ls | grep -q "srtla-server"; then
             echo "❌ Volume srtla-server still exists but should be removed!"
-            exit 1
+            FAILED=1
           else
             echo "✅ Volume srtla-server was removed (correct)"
           fi
+          if docker volume ls | grep -q "rtmp-server-data"; then
+            echo "❌ Volume rtmp-server-data still exists but should be removed!"
+            FAILED=1
+          else
+            echo "✅ Volume rtmp-server-data was removed (correct)"
+          fi
+          if docker volume ls | grep -q "rtmppanel-data"; then
+            echo "❌ Volume rtmppanel-data still exists but should be removed!"
+            FAILED=1
+          else
+            echo "✅ Volume rtmppanel-data was removed (correct)"
+          fi
+          exit $FAILED
 
       - name: Show logs on failure
         if: failure()
         run: |
-          for cname in rtmp-server srtla-server slspanel wud; do
+          for cname in rtmp-server srtla-server slspanel rtmppanel wud; do
             if docker ps -a --format '{{.Names}}' | grep -q "^${cname}$"; then
               echo "--- $cname ---"
               docker logs --tail 50 "$cname" 2>&1 || true
