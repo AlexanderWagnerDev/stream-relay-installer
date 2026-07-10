@@ -180,7 +180,7 @@ function extract_api_key_with_retry() {
 
 function extract_rtmp_api_token() {
   local token=""
-  token=$(docker logs rtmp-server 2>/dev/null | grep -A1 "Generated API token" | tail -1 | tr -d '[:space:]')
+  token=$(docker logs rtmp-server 2>/dev/null | grep -A1 "Generated API token" | grep -E '^[A-Za-z0-9]{32,}$' | tail -1 | tr -d '[:space:]')
   echo "$token"
 }
 
@@ -459,6 +459,7 @@ function update_services() {
       rtmp_token=$(extract_rtmp_api_token_with_retry)
       if [[ -n "$rtmp_token" ]]; then
         echo "$rtmp_token" > .rtmp_api_token
+        chmod 600 .rtmp_api_token
         [[ "$lang" == "de" ]] && echo -e "${SUCCESS}RTMP API-Token erfolgreich extrahiert.${NC}" || echo -e "${SUCCESS}RTMP API token successfully extracted.${NC}"
       fi
     fi
@@ -779,6 +780,7 @@ if [[ "$mainaction" == "1" ]]; then
       rtmp_token=$(extract_rtmp_api_token_with_retry)
       if [[ -n "$rtmp_token" ]]; then
         echo "$rtmp_token" > .rtmp_api_token
+        chmod 600 .rtmp_api_token
         if [[ "$lang" == "de" ]]; then
           echo -e "${SUCCESS}RTMP API-Token erfolgreich extrahiert und gespeichert.${NC}"
         else
