@@ -360,6 +360,27 @@ function recreate_container() {
   done < <(docker inspect "$cname" --format \
     '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null)
 
+  if [[ "$cname" == "wud" ]]; then
+    local wud_existing_env
+    wud_existing_env=$(docker inspect "$cname" --format \
+      '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null || true)
+
+    if ! grep -q '^WUD_AUTH_ADMIN_USER=' <<< "$wud_existing_env"; then
+      run_args+=(-e "WUD_AUTH_ADMIN_USER=admin")
+    fi
+    if ! grep -q '^WUD_AUTH_ADMIN_PASSWORD=' <<< "$wud_existing_env"; then
+      local wud_admin_password
+      wud_admin_password="$(openssl rand -hex 32 2>/dev/null || od -An -N32 -tx1 /dev/urandom | tr -d ' \n')"
+      run_args+=(-e "WUD_AUTH_ADMIN_PASSWORD=$wud_admin_password")
+    fi
+    if ! grep -q '^WUD_WATCHER_LOCAL_WATCHBYDEFAULT=' <<< "$wud_existing_env"; then
+      run_args+=(-e "WUD_WATCHER_LOCAL_WATCHBYDEFAULT=true")
+    fi
+    if ! grep -q '^WUD_WATCHER_LOCAL_WATCHDIGESTDEFAULT=' <<< "$wud_existing_env"; then
+      run_args+=(-e "WUD_WATCHER_LOCAL_WATCHDIGESTDEFAULT=true")
+    fi
+  fi
+
   if [[ "$cname" == "srtla-server" ]]; then
     local volume_data_path="/var/lib/docker/volumes/srtla-server/_data"
     sudo chown -R 3001:3001 "$volume_data_path" 2>/dev/null || true
@@ -868,7 +889,15 @@ if [[ "$mainaction" == "1" ]]; then
   if [[ "$install_wud" =~ ^[JjYy] ]]; then
     echo -e "$wud_install_msg"
     docker_pull_fallback "getwud/wud:latest" "ghcr.io/getwud/wud:latest"
-    docker run -d --name wud --restart always -v "/var/run/docker.sock:/var/run/docker.sock" -e WUD_TRIGGER_DOCKER_LOCAL_PRUNE=true getwud/wud:latest
+    wud_admin_password="$(openssl rand -hex 32 2>/dev/null || od -An -N32 -tx1 /dev/urandom | tr -d ' \n')"
+    docker run -d --name wud --restart always \
+      -v "/var/run/docker.sock:/var/run/docker.sock" \
+      -e WUD_AUTH_ADMIN_USER=admin \
+      -e "WUD_AUTH_ADMIN_PASSWORD=$wud_admin_password" \
+      -e WUD_WATCHER_LOCAL_WATCHBYDEFAULT=true \
+      -e WUD_WATCHER_LOCAL_WATCHDIGESTDEFAULT=true \
+      -e WUD_TRIGGER_DOCKER_LOCAL_PRUNE=true \
+      getwud/wud:latest
   else
     echo -e "$wud_skip_msg"
   fi
