@@ -123,11 +123,12 @@ function docker_pull_fallback() {
   local fallback_image="$2"
   if ! docker pull "$image" 2>/dev/null; then
     if [[ "$lang" == "de" ]]; then
-      echo -e "${YELLOW}Warnung: Image '$image' nicht von Docker Hub gefunden, versuche Fallback GHCR...${NC}"
+      echo -e "${YELLOW}Warnung: Docker-Hub-Pull für '$image' fehlgeschlagen, versuche GHCR...${NC}"
     else
-      echo -e "${YELLOW}Warning: Image '$image' not found on Docker Hub, trying fallback GHCR...${NC}"
+      echo -e "${YELLOW}Warning: Docker Hub pull failed for '$image', trying GHCR...${NC}"
     fi
-    if ! docker pull "$fallback_image" 2>/dev/null; then
+    # Keep GHCR pull errors visible (e.g. denied, manifest unknown, TLS errors).
+    if ! docker pull "$fallback_image"; then
       if [[ "$lang" == "de" ]]; then
         echo -e "${RED}Fehler: Image konnte weder von Docker Hub noch GHCR gezogen werden: $image / $fallback_image${NC}"
         echo -e "${RED}Das Script wird abgebrochen. Bitte Internetverbindung und Image-Namen prüfen.${NC}"
