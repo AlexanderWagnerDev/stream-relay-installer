@@ -137,6 +137,16 @@ function docker_pull_fallback() {
       fi
       exit 1
     fi
+    # docker run still uses the Docker Hub image name. Tag the successfully
+    # pulled GHCR image locally so Docker does not attempt Docker Hub again.
+    if ! docker tag "$fallback_image" "$image"; then
+      if [[ "$lang" == "de" ]]; then
+        echo -e "${RED}Fehler: GHCR-Image konnte nicht lokal als $image getaggt werden.${NC}"
+      else
+        echo -e "${RED}Error: Could not tag GHCR image locally as $image.${NC}"
+      fi
+      exit 1
+    fi
   fi
 }
 
