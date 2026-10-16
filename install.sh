@@ -74,7 +74,7 @@ function install_docker_debian_ubuntu() {
     echo -e "${INFO}Installing Docker via official get.docker.com script...${NC}"
   fi
 
-  curl -fsSL https://get.docker.com | sh
+  curl -fsSL --proto '=https' --tlsv1.2 https://get.docker.com | sh
 
   sudo systemctl enable docker
   sudo systemctl start docker
@@ -129,11 +129,11 @@ function docker_pull_fallback() {
     fi
     if ! docker pull "$fallback_image" 2>/dev/null; then
       if [[ "$lang" == "de" ]]; then
-        echo -e "${RED}Fehler: Image konnte weder von Docker Hub noch GHCR gezogen werden: $image / $fallback_image${NC}"
-        echo -e "${RED}Das Script wird abgebrochen. Bitte Internetverbindung und Image-Namen prüfen.${NC}"
+        echo -e "${RED}Fehler: Image konnte weder von Docker Hub noch GHCR gezogen werden: $image / $fallback_image${NC}" >&2
+        echo -e "${RED}Das Script wird abgebrochen. Bitte Internetverbindung und Image-Namen prüfen.${NC}" >&2
       else
-        echo -e "${RED}Error: Image could not be pulled from Docker Hub nor GHCR: $image / $fallback_image${NC}"
-        echo -e "${RED}Aborting script. Please check your internet connection and image names.${NC}"
+        echo -e "${RED}Error: Image could not be pulled from Docker Hub nor GHCR: $image / $fallback_image${NC}" >&2
+        echo -e "${RED}Aborting script. Please check your internet connection and image names.${NC}" >&2
       fi
       exit 1
     fi
@@ -141,9 +141,9 @@ function docker_pull_fallback() {
     # pulled GHCR image locally so Docker does not attempt Docker Hub again.
     if ! docker tag "$fallback_image" "$image"; then
       if [[ "$lang" == "de" ]]; then
-        echo -e "${RED}Fehler: GHCR-Image konnte nicht lokal als $image getaggt werden.${NC}"
+        echo -e "${RED}Fehler: GHCR-Image konnte nicht lokal als $image getaggt werden.${NC}" >&2
       else
-        echo -e "${RED}Error: Could not tag GHCR image locally as $image.${NC}"
+        echo -e "${RED}Error: Could not tag GHCR image locally as $image.${NC}" >&2
       fi
       exit 1
     fi
@@ -260,10 +260,10 @@ function health_check() {
     elif [[ -z "$health" ]]; then
       [[ "$lang" == "de" ]] && echo -e "${SUCCESS}Container $cname läuft (kein Healthcheck definiert).${NC}" || echo -e "${SUCCESS}Container $cname is running (no healthcheck defined).${NC}"
     else
-      [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname ist nicht gesund! Status: $health${NC}" || echo -e "${ERROR}Container $cname is not healthy! Status: $health${NC}"
+      [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname ist nicht gesund! Status: $health${NC}" >&2 || echo -e "${ERROR}Container $cname is not healthy! Status: $health${NC}" >&2
     fi
   else
-    [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname läuft NICHT!${NC}" || echo -e "${ERROR}Container $cname is NOT running!${NC}"
+    [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname läuft NICHT!${NC}" >&2 || echo -e "${ERROR}Container $cname is NOT running!${NC}" >&2
   fi
 }
 
@@ -379,7 +379,7 @@ function recreate_container() {
 
   # shellcheck disable=SC2086
   if ! docker run -d --name "$cname" $restart_flag "${run_args[@]}" "$image"; then
-    [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname konnte nicht gestartet werden.${NC}" || echo -e "${ERROR}Failed to start container $cname.${NC}"
+    [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname konnte nicht gestartet werden.${NC}" >&2 || echo -e "${ERROR}Failed to start container $cname.${NC}" >&2
     return 1
   fi
 
@@ -394,7 +394,7 @@ function recreate_container() {
     if [[ "$running" == "true" ]]; then
       [[ "$lang" == "de" ]] && echo -e "${SUCCESS}Container $cname läuft.${NC}" || echo -e "${SUCCESS}Container $cname is running.${NC}"
     else
-      [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname läuft NICHT!${NC}" || echo -e "${ERROR}Container $cname is NOT running!${NC}"
+      [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname läuft NICHT!${NC}" >&2 || echo -e "${ERROR}Container $cname is NOT running!${NC}" >&2
     fi
   fi
 }
@@ -438,7 +438,7 @@ function uninstall_services() {
     docker rmi -f "ghcr.io/$img" 2>/dev/null || true
   done
 
-  if [ -f ".apikey" ]; then
+  if [[ -f ".apikey" ]]; then
     rm -f ".apikey"
     if [[ "$lang" == "de" ]]; then
       echo -e "${SUCCESS}API-Key Datei (.apikey) gelöscht.${NC}"
@@ -730,7 +730,7 @@ if [[ "$mainaction" == "1" ]]; then
 
     health_check srtla-server
 
-    if [ ! -f ".apikey" ]; then
+    if [[ ! -f ".apikey" ]]; then
       if [[ "$lang" == "de" ]]; then
         echo -e "${INFO}Warte auf vollständiges Initialisieren des Containers...${NC}"
       else
@@ -746,9 +746,9 @@ if [[ "$mainaction" == "1" ]]; then
         fi
       else
         if [[ "$lang" == "de" ]]; then
-          echo -e "${ERROR}API-Key konnte nicht extrahiert werden.${NC}"
+          echo -e "${ERROR}API-Key konnte nicht extrahiert werden.${NC}" >&2
         else
-          echo -e "${ERROR}API key could not be extracted.${NC}"
+          echo -e "${ERROR}API key could not be extracted.${NC}" >&2
         fi
       fi
     else
