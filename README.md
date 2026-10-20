@@ -21,6 +21,7 @@ This script installs **Docker** along with an **RTMP** and **SRTLA relay server*
 
 - **RTMP Server** – [AlexanderWagnerDev/rtmp-server-docker](https://github.com/AlexanderWagnerDev/rtmp-server-docker) 
 - **SRTLA Relay Server** – [AlexanderWagnerDev/srtla-server-docker](https://github.com/AlexanderWagnerDev/srtla-server-docker)
+- **RTMPPanel** – [AlexanderWagnerDev/rtmppanel-docker](https://github.com/AlexanderWagnerDev/rtmppanel-docker)
 - **SLSPanel** - [AlexanderWagnerDev/slspanel-docker](https://github.com/AlexanderWagnerDev/slspanel-docker)
 - WUD - [getwud/wud](https://github.com/getwud/wud)
 
@@ -75,6 +76,7 @@ Dieses Skript installiert **Docker** sowie einen **RTMP**- und **SRTLA-Relay-Ser
 
 - **RTMP Server** – [AlexanderWagnerDev/rtmp-server-docker](https://github.com/AlexanderWagnerDev/rtmp-server-docker) 
 - **SRTLA Relay Server** – [AlexanderWagnerDev/srtla-server-docker](https://github.com/AlexanderWagnerDev/srtla-server-docker)
+- **RTMPPanel** – [AlexanderWagnerDev/rtmppanel-docker](https://github.com/AlexanderWagnerDev/rtmppanel-docker)
 - **SLSPanel** - [AlexanderWagnerDev/slspanel-docker](https://github.com/AlexanderWagnerDev/slspanel-docker)
 - WUD - [getwud/wud](https://github.com/getwud/wud)
 
@@ -110,3 +112,11 @@ Nach dem Neustart ist dein Stream-Relay-Server mit den Standardkonfigurationen e
 ## License
 
 MIT
+
+## OpenRTMP
+
+RTMP now uses OpenRTMP/librtmp2-server with HTTP API on host port 8090 (container 8080). RTMPPanel is optional on port 8001; SLSPanel remains on 8000. The installer stores the API token in `.rtmp_api_token`, the stable encryption secret in `.rtmppanel_secret` (mode 600), and databases in `rtmp-server-data` and `rtmppanel-data`. Keep the secret together with the panel database.
+
+Updates remap legacy nginx HTTP port 80 to 8080 while retaining the host port and add persistent server storage. Old arbitrary nginx stream keys must be recreated in RTMPPanel. Use the publish and playback URLs shown in the panel. Build/publish the new RTMP latest image before running the updated installer.
+
+RTMP basiert jetzt auf OpenRTMP. RTMPPanel läuft optional auf Port 8001. API-Token, Verschlüsselungs-Secret und Datenbanken bleiben für Updates erhalten. Beim Wechsel von nginx werden HTTP-Port und Datenvolume angepasst; bisherige Streams im Panel neu anlegen und die dort angezeigten URLs verwenden. Das neue RTMP-latest-Image muss vor der Installation veröffentlicht sein.
