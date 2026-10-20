@@ -39,6 +39,10 @@ services:
       SECRET_KEY: ${SECRET_KEY:?Set a stable SECRET_KEY in .env}
       PANEL_DB_PATH: /data/panel.db
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-False}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-1}
+      ALLOW_INSECURE_NO_LOGIN: ${ALLOW_INSECURE_NO_LOGIN:-0}
+      RATELIMIT_STORAGE_URI: ${RATELIMIT_STORAGE_URI:-memory://}
+      LRTMP2_STATS_URL: ${LRTMP2_STATS_URL:-http://localhost:${RTMP_API_PORT:-8090}}
     volumes:
     - rtmppanel-data:/data
     ports:

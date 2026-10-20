@@ -5,3 +5,4 @@ __pycache__/
 .rtmp_api_token
 .rtmppanel_secret
 .apikey
+.upstream/

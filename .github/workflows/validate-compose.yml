@@ -15,3 +15,14 @@ jobs:
           SECRET_KEY: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
           PANEL_PASSWORD: validation-only-password
         run: docker compose config --quiet
+      - name: Check panel startup configuration from the matching upstream channel
+        uses: actions/checkout@v7
+        with:
+          repository: OpenRTMP/librtmp2-server-panel
+          ref: v0.1.10
+          path: .upstream
+          persist-credentials: false
+      - name: Test rendered deployment against upstream startup guards
+        env:
+          PANEL_SOURCE_DIR: ${{ github.workspace }}/.upstream
+        run: python3 -m unittest discover -s tests -v
