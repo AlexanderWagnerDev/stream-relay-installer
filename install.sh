@@ -91,7 +91,7 @@ function read_port () {
   local prompt="$1"
   local default_port="$2"
   local response
-  echo -n "$prompt [$default_port]: "
+  echo -n "$prompt [$default_port]: " >&2
   read -r response
   if [[ -z "$response" ]]; then
     response=$default_port
@@ -227,16 +227,52 @@ function extract_rtmp_api_token_with_retry() {
   return 1
 }
 
+function write_private_value() {
+  local path="$1"
+  local value="$2"
+  (
+    umask 077
+    if [[ -e "$path" ]]; then
+      chmod 600 "$path" || exit 1
+    fi
+    printf '%s\n' "$value" > "$path" || exit 1
+    chmod 600 "$path"
+  )
+}
+
 function get_or_create_rtmppanel_secret() {
-  if [[ -f ".rtmppanel_secret" ]]; then
+  if [[ -s ".rtmppanel_secret" ]]; then
+    chmod 600 .rtmppanel_secret
     cat .rtmppanel_secret
     return
   fi
   local secret=""
-  secret=$(openssl rand -hex 32 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(32))' 2>/dev/null)
-  echo "$secret" > .rtmppanel_secret
-  chmod 600 .rtmppanel_secret
-  echo "$secret"
+  secret=$(openssl rand -hex 32 2>/dev/null) || secret=""
+  if [[ -z "$secret" ]]; then
+    secret=$(python3 -c 'import secrets; print(secrets.token_hex(32))' 2>/dev/null) || secret=""
+  fi
+  if [[ -z "$secret" ]]; then
+    secret=$(od -An -N32 -tx1 /dev/urandom 2>/dev/null | tr -d ' \n') || secret=""
+  fi
+  if [[ ! "$secret" =~ ^[[:xdigit:]]{64}$ ]]; then
+    echo "Could not generate RTMPPanel SECRET_KEY." >&2
+    return 1
+  fi
+  write_private_value .rtmppanel_secret "$secret" || return 1
+  printf '%s\n' "$secret"
+}
+
+function ensure_openrtmp_network() {
+  docker network inspect openrtmp >/dev/null 2>&1 || docker network create openrtmp >/dev/null
+}
+
+function connect_rtmp_backend() {
+  ensure_openrtmp_network
+  if docker container inspect rtmp-server >/dev/null 2>&1 &&
+    ! docker inspect rtmp-server --format \
+      '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' | grep -qx openrtmp; then
+    docker network connect openrtmp rtmp-server
+  fi
 }
 
 function print_available_services() {
@@ -261,7 +297,7 @@ function print_available_services() {
     echo -e "${SUCCESS}SRT Player URL ZUM EMPFANGEN (Beispiel): srt://${p_public_ip}:${p_srt_player_port}?streamid=playkey${NC}"
     echo -e "${SUCCESS}SRT/SRTLA Statistiken URL (Beispiel): http://${p_public_ip}:${p_sls_stats_port}/stats/playkey${NC}"
     echo -e "${SUCCESS}RTMP Statistiken/API URL: http://${p_public_ip}:${p_rtmp_stats_port}/api/v1/health${NC}"
-    echo -e "${SUCCESS}RTMP URL ZUM SENDEN UND EMPFANGEN (Beispiel): rtmp://${p_public_ip}:${p_rtmp_port}/live/DEIN_PUBLISH_KEY${NC}"
+    echo -e "${SUCCESS}RTMP Sende-URL (Beispiel; Wiedergabe-URL im Panel): rtmp://${p_public_ip}:${p_rtmp_port}/live/DEIN_PUBLISH_KEY${NC}"
     if [[ -n "$p_rtmppanel_port" ]]; then
       echo -e "${SUCCESS}RTMPPanel UI: http://${p_public_ip}:${p_rtmppanel_port}${NC}"
     fi
@@ -275,7 +311,7 @@ function print_available_services() {
     echo -e "${SUCCESS}SRT Player URL TO RECEIVE (Example): srt://${p_public_ip}:${p_srt_player_port}?streamid=playkey${NC}"
     echo -e "${SUCCESS}SRT/SRTLA Statistics URL (Example): http://${p_public_ip}:${p_sls_stats_port}/stats/playkey${NC}"
     echo -e "${SUCCESS}RTMP Stats/API URL: http://${p_public_ip}:${p_rtmp_stats_port}/api/v1/health${NC}"
-    echo -e "${SUCCESS}RTMP URL FOR SENDING AND RECEIVING (Example): rtmp://${p_public_ip}:${p_rtmp_port}/live/YOUR_PUBLISH_KEY${NC}"
+    echo -e "${SUCCESS}RTMP publish URL (example; get playback URL from panel): rtmp://${p_public_ip}:${p_rtmp_port}/live/YOUR_PUBLISH_KEY${NC}"
     if [[ -n "$p_rtmppanel_port" ]]; then
       echo -e "${SUCCESS}RTMPPanel UI: http://${p_public_ip}:${p_rtmppanel_port}${NC}"
     fi
@@ -358,7 +394,37 @@ function recreate_container() {
 
   local -a run_args=()
 
+  local -a networks=()
+  local network
+  local network_names
+  network_names=$(docker inspect "$cname" --format \
+    '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}') || return 1
+  while IFS= read -r network; do
+    [[ -n "$network" ]] && networks+=("$network")
+  done <<< "$network_names"
+  if [[ "$cname" == "rtmp-server" || "$cname" == "rtmppanel" ]]; then
+    ensure_openrtmp_network
+    # A host/none network cannot coexist with a user-defined network.
+    if [[ " ${networks[*]} " != *" host "* && " ${networks[*]} " != *" none "* ]]; then
+      local -a old_networks=("${networks[@]}")
+      networks=(openrtmp)
+      for network in "${old_networks[@]}"; do
+        [[ "$network" != openrtmp ]] && networks+=("$network")
+      done
+    else
+      echo "RTMP services on host/none networks must be migrated to the openrtmp network before updating." >&2
+      return 1
+    fi
+  fi
+  if (( ${#networks[@]} > 0 )); then
+    run_args+=(--network "${networks[0]}")
+  fi
+
   while IFS= read -r port_entry; do
+    # Preserve the published host port when migrating the nginx container.
+    if [[ "$cname" == "rtmp-server" && "$port_entry" == *:80/tcp ]]; then
+      port_entry="${port_entry%:80/tcp}:8080/tcp"
+    fi
     [[ -n "$port_entry" ]] && run_args+=(-p "$port_entry")
   done < <(docker inspect "$cname" --format \
     '{{range $p, $confs := .HostConfig.PortBindings}}{{range $confs}}{{.HostPort}}:{{$p}} {{end}}{{end}}' \
@@ -370,6 +436,24 @@ function recreate_container() {
     fi
   done < <(docker inspect "$cname" --format \
     '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null)
+
+  if [[ "$cname" == "rtmppanel" ]]; then
+    connect_rtmp_backend
+    local old_api_url
+    old_api_url=$(docker inspect "$cname" --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^LRTMP2_API_URL=//p')
+    if [[ -n "$old_api_url" ]] && ! docker inspect "$cname" --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -q '^LRTMP2_STATS_URL='; then
+      run_args+=(-e "LRTMP2_STATS_URL=$old_api_url")
+    fi
+    local panel_env
+    panel_env=$(docker inspect "$cname" --format '{{range .Config.Env}}{{println .}}{{end}}')
+    if ! grep -q '^ALLOW_INSECURE_NO_LOGIN=' <<< "$panel_env" && grep -Eiq '^REQUIRE_LOGIN=(false|0|no|off)$' <<< "$panel_env"; then
+      run_args+=(-e ALLOW_INSECURE_NO_LOGIN=1)
+    fi
+    run_args+=(-e LRTMP2_API_URL=http://rtmp-server:8080 -e GUNICORN_WORKERS=1)
+  fi
+  if [[ "$cname" == "rtmppanel" && -s .rtmp_api_token ]]; then
+    run_args+=(-e "LRTMP2_API_TOKEN=$(cat .rtmp_api_token)")
+  fi
 
   if [[ "$cname" == "wud" ]]; then
     local wud_existing_env
@@ -390,6 +474,11 @@ function recreate_container() {
     if ! grep -q '^WUD_WATCHER_LOCAL_WATCHDIGESTDEFAULT=' <<< "$wud_existing_env"; then
       run_args+=(-e "WUD_WATCHER_LOCAL_WATCHDIGESTDEFAULT=true")
     fi
+  fi
+
+  if [[ "$cname" == "rtmp-server" ]] && ! docker inspect "$cname" --format \
+    '{{range .Mounts}}{{println .Destination}}{{end}}' | grep -qx /data; then
+    run_args+=(-v rtmp-server-data:/data)
   fi
 
   if [[ "$cname" == "srtla-server" ]]; then
@@ -413,20 +502,11 @@ function recreate_container() {
     '{{range $k, $v := .Config.Labels}}{{$k}}={{$v}} {{end}}' \
     2>/dev/null | tr ' ' '\n' | grep -v '^$')
 
+  # Download before removing the running container so a registry outage
+  # leaves the existing service available.
+  docker_pull_fallback "$image" "$fallback_image"
   docker stop "$cname" 2>/dev/null || true
   docker rm "$cname" 2>/dev/null || true
-
-  [[ "$lang" == "de" ]] && echo -e "${INFO}Entferne alte Images...${NC}" || echo -e "${INFO}Removing old images...${NC}"
-  docker rmi -f "$image" 2>/dev/null || true
-  docker rmi -f "$fallback_image" 2>/dev/null || true
-  local image_base
-  image_base=$(echo "$image" | cut -d':' -f1)
-  docker images --format "{{.Repository}}:{{.Tag}}" | grep "^${image_base}:" | xargs -r docker rmi -f 2>/dev/null || true
-  local fallback_base
-  fallback_base=$(echo "$fallback_image" | cut -d':' -f1)
-  docker images --format "{{.Repository}}:{{.Tag}}" | grep "^${fallback_base}:" | xargs -r docker rmi -f 2>/dev/null || true
-
-  docker_pull_fallback "$image" "$fallback_image"
 
   local restart_flag=""
   if [[ "$restart_policy" == "unless-stopped" ]]; then
@@ -440,6 +520,10 @@ function recreate_container() {
     [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname konnte nicht gestartet werden.${NC}" >&2 || echo -e "${ERROR}Failed to start container $cname.${NC}" >&2
     return 1
   fi
+
+  for network in "${networks[@]:1}"; do
+    docker network connect "$network" "$cname" || return 1
+  done
 
   [[ "$lang" == "de" ]] && echo -e "${SUCCESS}Container $cname wurde neu erstellt.${NC}" || echo -e "${SUCCESS}Container $cname has been recreated.${NC}"
 
@@ -477,7 +561,7 @@ function update_services() {
       [[ "$lang" == "de" ]] && echo -e "${INFO}Versuche API-Key neu zu extrahieren...${NC}" || echo -e "${INFO}Trying to re-extract API key...${NC}"
       apikey=$(extract_api_key_with_retry)
       if [[ -n "$apikey" ]]; then
-        echo "$apikey" > .apikey
+        write_private_value .apikey "$apikey"
         [[ "$lang" == "de" ]] && echo -e "${SUCCESS}API-Key erfolgreich extrahiert.${NC}" || echo -e "${SUCCESS}API key successfully extracted.${NC}"
       fi
     fi
@@ -490,7 +574,7 @@ function update_services() {
       [[ "$lang" == "de" ]] && echo -e "${INFO}Versuche RTMP API-Token neu zu extrahieren...${NC}" || echo -e "${INFO}Trying to re-extract RTMP API token...${NC}"
       rtmp_token=$(extract_rtmp_api_token_with_retry) || true
       if [[ -n "$rtmp_token" ]]; then
-        echo "$rtmp_token" > .rtmp_api_token
+        write_private_value .rtmp_api_token "$rtmp_token"
         chmod 600 .rtmp_api_token
         [[ "$lang" == "de" ]] && echo -e "${SUCCESS}RTMP API-Token erfolgreich extrahiert.${NC}" || echo -e "${SUCCESS}RTMP API token successfully extracted.${NC}"
       fi
@@ -519,14 +603,6 @@ function uninstall_services() {
     fi
   fi
 
-  if [[ -f ".rtmp_api_token" ]]; then
-    rm -f ".rtmp_api_token"
-    if [[ "$lang" == "de" ]]; then
-      echo -e "${SUCCESS}RTMP API-Token Datei (.rtmp_api_token) gelöscht.${NC}"
-    else
-      echo -e "${SUCCESS}RTMP API token file (.rtmp_api_token) deleted.${NC}"
-    fi
-  fi
 
   if [[ "$lang" == "de" ]]; then
     read -rp $'\033[1;33mSollen auch Volumes gelöscht werden? (j/n):\033[0m ' rmvol
@@ -534,7 +610,7 @@ function uninstall_services() {
       docker volume rm srtla-server 2>/dev/null || true
       docker volume rm rtmp-server-data 2>/dev/null || true
       docker volume rm rtmppanel-data 2>/dev/null || true
-      rm -f ".rtmppanel_secret"
+      rm -f ".rtmppanel_secret" ".rtmp_api_token"
       echo -e "${SUCCESS}Docker-Volumes (srtla-server, rtmp-server-data, rtmppanel-data) entfernt.${NC}"
     else
       echo -e "${INFO}Volumes bleiben erhalten.${NC}"
@@ -546,7 +622,7 @@ function uninstall_services() {
       docker volume rm srtla-server 2>/dev/null || true
       docker volume rm rtmp-server-data 2>/dev/null || true
       docker volume rm rtmppanel-data 2>/dev/null || true
-      rm -f ".rtmppanel_secret"
+      rm -f ".rtmppanel_secret" ".rtmp_api_token"
       echo -e "${SUCCESS}Docker volumes (srtla-server, rtmp-server-data, rtmppanel-data) removed.${NC}"
     else
       echo -e "${INFO}Volumes are kept.${NC}"
@@ -784,10 +860,11 @@ if [[ "$mainaction" == "1" ]]; then
   install_rtmp=${install_rtmp:-n}
   if [[ "$install_rtmp" =~ ^[JjYy] ]]; then
     echo -e "$rtmp_install_msg"
+    ensure_openrtmp_network
     docker_pull_fallback "alexanderwagnerdev/rtmp-server:beta" "ghcr.io/alexanderwagnerdev/rtmp-server:beta"
 
     if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
-      docker run -d --name rtmp-server --restart unless-stopped \
+      docker run -d --name rtmp-server --restart unless-stopped --network openrtmp \
         --label "wud.watch=true" \
         --label "wud.watch.digest=true" \
         --label "wud.tag.include=^beta$" \
@@ -795,7 +872,7 @@ if [[ "$mainaction" == "1" ]]; then
         -p "${rtmp_stats_port}":8080/tcp -p "${rtmp_port}":1935/tcp \
         alexanderwagnerdev/rtmp-server:beta
     else
-      docker run -d --name rtmp-server --restart unless-stopped \
+      docker run -d --name rtmp-server --restart unless-stopped --network openrtmp \
         -v rtmp-server-data:/data \
         -p "${rtmp_stats_port}":8080/tcp -p "${rtmp_port}":1935/tcp \
         alexanderwagnerdev/rtmp-server:beta
@@ -803,7 +880,7 @@ if [[ "$mainaction" == "1" ]]; then
 
     health_check rtmp-server
 
-    if [[ ! -f ".rtmp_api_token" ]]; then
+    if [[ ! -s ".rtmp_api_token" ]]; then
       if [[ "$lang" == "de" ]]; then
         echo -e "${INFO}Warte auf vollständiges Initialisieren des Containers...${NC}"
       else
@@ -811,7 +888,7 @@ if [[ "$mainaction" == "1" ]]; then
       fi
       rtmp_token=$(extract_rtmp_api_token_with_retry) || true
       if [[ -n "$rtmp_token" ]]; then
-        echo "$rtmp_token" > .rtmp_api_token
+        write_private_value .rtmp_api_token "$rtmp_token"
         chmod 600 .rtmp_api_token
         if [[ "$lang" == "de" ]]; then
           echo -e "${SUCCESS}RTMP API-Token erfolgreich extrahiert und gespeichert.${NC}"
@@ -873,7 +950,7 @@ if [[ "$mainaction" == "1" ]]; then
       fi
       apikey=$(extract_api_key_with_retry)
       if [[ -n "$apikey" ]]; then
-        echo "$apikey" > .apikey
+        write_private_value .apikey "$apikey"
         if [[ "$lang" == "de" ]]; then
           echo -e "${SUCCESS}API-Key erfolgreich extrahiert und gespeichert.${NC}"
         else
@@ -956,8 +1033,8 @@ if [[ "$mainaction" == "1" ]]; then
           --label "wud.watch.digest=true" \
           --label "wud.tag.include=^beta$" \
           -e REQUIRE_LOGIN=True \
-          -e WEB_USERNAME="${slspanel_username}" \
-          -e WEB_PASSWORD="${slspanel_password}" \
+          -e USERNAME="${slspanel_username}" \
+          -e PASSWORD="${slspanel_password}" \
           -e SLS_API_URL="${slspanel_api_url}" \
           -e SLS_API_KEY="${apikey}" \
           -e SLS_DOMAIN_IP="${public_ip}" \
@@ -971,8 +1048,8 @@ if [[ "$mainaction" == "1" ]]; then
       else
         docker run -d --name slspanel --restart unless-stopped \
           -e REQUIRE_LOGIN=True \
-          -e WEB_USERNAME="${slspanel_username}" \
-          -e WEB_PASSWORD="${slspanel_password}" \
+          -e USERNAME="${slspanel_username}" \
+          -e PASSWORD="${slspanel_password}" \
           -e SLS_API_URL="${slspanel_api_url}" \
           -e SLS_API_KEY="${apikey}" \
           -e SLS_DOMAIN_IP="${public_ip}" \
@@ -1049,7 +1126,9 @@ if [[ "$mainaction" == "1" ]]; then
       echo -e "${INFO}Starting RTMPPanel Docker container...${NC}"
     fi
 
-    rtmp_api_url="http://${public_ip}:${rtmp_stats_port}"
+    connect_rtmp_backend
+    rtmp_api_url="http://rtmp-server:8080"
+    rtmp_stats_url="http://${public_ip}:${rtmp_stats_port}"
     rtmp_token=$(cat .rtmp_api_token 2>/dev/null || echo "")
     if [[ -z "$rtmp_token" ]]; then
       if [[ "$lang" == "de" ]]; then
@@ -1058,6 +1137,10 @@ if [[ "$mainaction" == "1" ]]; then
         echo -e "${YELLOW}Warning: No RTMP API token found (.rtmp_api_token). Make sure the RTMP server was installed. RTMPPanel will start without a valid token.${NC}"
       fi
     fi
+    rtmppanel_allow_no_login=0
+    if [[ ! "$rtmppanel_enable_login" =~ ^[JjYy] ]]; then
+      rtmppanel_allow_no_login=1
+    fi
     rtmppanel_secret=$(get_or_create_rtmppanel_secret)
     TZ=$(grep -v '^$' /etc/timezone 2>/dev/null || timedatectl show --property=Timezone --value 2>/dev/null || echo UTC)
 
@@ -1065,7 +1148,7 @@ if [[ "$mainaction" == "1" ]]; then
 
     if [[ "$rtmppanel_enable_login" =~ ^[JjYy] ]]; then
       if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
-        docker run -d --name rtmppanel --restart unless-stopped \
+        docker run -d --name rtmppanel --restart unless-stopped --network openrtmp \
           --label "wud.watch=true" \
           --label "wud.watch.digest=true" \
           --label "wud.tag.include=^beta$" \
@@ -1073,6 +1156,9 @@ if [[ "$mainaction" == "1" ]]; then
           -e USERNAME="${rtmppanel_username}" \
           -e PASSWORD="${rtmppanel_password}" \
           -e SECRET_KEY="${rtmppanel_secret}" \
+          -e ALLOW_INSECURE_NO_LOGIN="${rtmppanel_allow_no_login}" \
+          -e GUNICORN_WORKERS=1 \
+          -e LRTMP2_STATS_URL="${rtmp_stats_url}" \
           -e LRTMP2_API_URL="${rtmp_api_url}" \
           -e LRTMP2_API_TOKEN="${rtmp_token}" \
           -e LRTMP2_DOMAIN="${public_ip}" \
@@ -1082,11 +1168,14 @@ if [[ "$mainaction" == "1" ]]; then
           -v rtmppanel-data:/data \
           -p ${rtmppanel_port}:8000/tcp alexanderwagnerdev/rtmppanel:beta
       else
-        docker run -d --name rtmppanel --restart unless-stopped \
+        docker run -d --name rtmppanel --restart unless-stopped --network openrtmp \
           -e REQUIRE_LOGIN=True \
           -e USERNAME="${rtmppanel_username}" \
           -e PASSWORD="${rtmppanel_password}" \
           -e SECRET_KEY="${rtmppanel_secret}" \
+          -e ALLOW_INSECURE_NO_LOGIN="${rtmppanel_allow_no_login}" \
+          -e GUNICORN_WORKERS=1 \
+          -e LRTMP2_STATS_URL="${rtmp_stats_url}" \
           -e LRTMP2_API_URL="${rtmp_api_url}" \
           -e LRTMP2_API_TOKEN="${rtmp_token}" \
           -e LRTMP2_DOMAIN="${public_ip}" \
@@ -1098,12 +1187,15 @@ if [[ "$mainaction" == "1" ]]; then
       fi
     else
       if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
-        docker run -d --name rtmppanel --restart unless-stopped \
+        docker run -d --name rtmppanel --restart unless-stopped --network openrtmp \
           --label "wud.watch=true" \
           --label "wud.watch.digest=true" \
           --label "wud.tag.include=^beta$" \
           -e REQUIRE_LOGIN=False \
           -e SECRET_KEY="${rtmppanel_secret}" \
+          -e ALLOW_INSECURE_NO_LOGIN="${rtmppanel_allow_no_login}" \
+          -e GUNICORN_WORKERS=1 \
+          -e LRTMP2_STATS_URL="${rtmp_stats_url}" \
           -e LRTMP2_API_URL="${rtmp_api_url}" \
           -e LRTMP2_API_TOKEN="${rtmp_token}" \
           -e LRTMP2_DOMAIN="${public_ip}" \
@@ -1113,9 +1205,12 @@ if [[ "$mainaction" == "1" ]]; then
           -v rtmppanel-data:/data \
           -p ${rtmppanel_port}:8000/tcp alexanderwagnerdev/rtmppanel:beta
       else
-        docker run -d --name rtmppanel --restart unless-stopped \
+        docker run -d --name rtmppanel --restart unless-stopped --network openrtmp \
           -e REQUIRE_LOGIN=False \
           -e SECRET_KEY="${rtmppanel_secret}" \
+          -e ALLOW_INSECURE_NO_LOGIN="${rtmppanel_allow_no_login}" \
+          -e GUNICORN_WORKERS=1 \
+          -e LRTMP2_STATS_URL="${rtmp_stats_url}" \
           -e LRTMP2_API_URL="${rtmp_api_url}" \
           -e LRTMP2_API_TOKEN="${rtmp_token}" \
           -e LRTMP2_DOMAIN="${public_ip}" \
@@ -1132,6 +1227,11 @@ if [[ "$mainaction" == "1" ]]; then
     echo -e "$rtmppanel_skip_msg"
   fi
 
+  rtmppanel_summary_port=""
+  if [[ "$install_rtmppanel" =~ ^[JjYy] ]]; then
+    rtmppanel_summary_port="$rtmppanel_port"
+  fi
+
   print_available_services \
     "$app_url" \
     "$slspanel_port" \
@@ -1143,7 +1243,7 @@ if [[ "$mainaction" == "1" ]]; then
     "$sls_stats_port" \
     "$rtmp_stats_port" \
     "$rtmp_port" \
-    "$rtmppanel_port"
+    "$rtmppanel_summary_port"
 
   echo -e "$done_msg"
   echo -e "$restart_msg"

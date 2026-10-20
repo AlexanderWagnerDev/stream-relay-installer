@@ -1,0 +1,93 @@
+services:
+  rtmp-server:
+    image: alexanderwagnerdev/rtmp-server:beta
+    container_name: rtmp-server
+    restart: unless-stopped
+    environment:
+      LRTMP2_DB: /data/server.db
+      LRTMP2_API_TOKEN: ${LRTMP2_API_TOKEN:?Set LRTMP2_API_TOKEN in .env}
+    ports:
+    - ${RTMP_PORT:-1935}:1935/tcp
+    - ${RTMP_API_PORT:-8090}:8080/tcp
+    volumes:
+    - rtmp-server-data:/data
+    healthcheck:
+      test:
+      - CMD
+      - wget
+      - -qO-
+      - http://127.0.0.1:8080/api/v1/health
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+  rtmppanel:
+    image: alexanderwagnerdev/rtmppanel:beta
+    container_name: rtmppanel
+    restart: unless-stopped
+    environment:
+      LANG: ${PANEL_LANG:-en}
+      TZ: ${TZ:-UTC}
+      LRTMP2_API_URL: http://rtmp-server:8080
+      LRTMP2_API_TOKEN: ${LRTMP2_API_TOKEN:?Set LRTMP2_API_TOKEN in .env}
+      LRTMP2_DOMAIN: ${LRTMP2_DOMAIN:-localhost}
+      LRTMP2_RTMP_PORT: ${RTMP_PORT:-1935}
+      LRTMP2_APP: ${LRTMP2_APP:-live}
+      REQUIRE_LOGIN: ${REQUIRE_LOGIN:-True}
+      USERNAME: ${PANEL_USERNAME:-admin}
+      PASSWORD: ${PANEL_PASSWORD:?Set PANEL_PASSWORD in .env}
+      SECRET_KEY: ${SECRET_KEY:?Set a stable SECRET_KEY in .env}
+      PANEL_DB_PATH: /data/panel.db
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-False}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-1}
+      ALLOW_INSECURE_NO_LOGIN: ${ALLOW_INSECURE_NO_LOGIN:-0}
+      RATELIMIT_STORAGE_URI: ${RATELIMIT_STORAGE_URI:-memory://}
+      LRTMP2_STATS_URL: ${LRTMP2_STATS_URL:-http://localhost:${RTMP_API_PORT:-8090}}
+    volumes:
+    - rtmppanel-data:/data
+    ports:
+    - ${RTMPPANEL_PORT:-8001}:8000/tcp
+    depends_on:
+      rtmp-server:
+        condition: service_healthy
+  srtla-server:
+    image: alexanderwagnerdev/srtla-server:beta
+    container_name: srtla-server
+    restart: unless-stopped
+    profiles:
+    - srtla
+    ports:
+    - ${SLS_STATS_PORT:-8789}:8080/tcp
+    - ${SRTLA_PORT:-5000}:5000/udp
+    - ${SRT_PUBLISH_PORT:-4001}:4001/udp
+    - ${SRT_PLAYER_PORT:-4000}:4000/udp
+    volumes:
+    - srtla-server-data:/var/lib/sls
+  slspanel:
+    image: alexanderwagnerdev/slspanel:beta
+    container_name: slspanel
+    restart: unless-stopped
+    profiles:
+    - srtla
+    depends_on:
+    - srtla-server
+    environment:
+      SLS_API_URL: http://srtla-server:8080
+      SLS_API_KEY: ${SLS_API_KEY:-}
+      SLS_DOMAIN_IP: ${LRTMP2_DOMAIN:-localhost}
+      SLS_STATS_DOMAIN_IP: ${LRTMP2_DOMAIN:-localhost}
+      SLS_STATS_PORT: ${SLS_STATS_PORT:-8789}
+      SRT_PUBLISH_PORT: ${SRT_PUBLISH_PORT:-4001}
+      SRT_PLAYER_PORT: ${SRT_PLAYER_PORT:-4000}
+      SRTLA_PUBLISH_PORT: ${SRTLA_PORT:-5000}
+      REQUIRE_LOGIN: ${REQUIRE_LOGIN:-True}
+      USERNAME: ${PANEL_USERNAME:-admin}
+      PASSWORD: ${PANEL_PASSWORD:?Set PANEL_PASSWORD in .env}
+      LANG: ${PANEL_LANG:-en}
+      TZ: ${TZ:-UTC}
+    ports:
+    - ${SLSPANEL_PORT:-8000}:8000/tcp
+volumes:
+  rtmp-server-data: null
+  rtmppanel-data: null
+  srtla-server-data: null
