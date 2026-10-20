@@ -18,6 +18,8 @@ Branch: **beta** · Server image: `alexanderwagnerdev/rtmp-server:beta` · Panel
 
 The [stream-relay-installer](https://github.com/AlexanderWagnerDev/stream-relay-installer/tree/beta) offers guided setup and service management. Docker Engine 20.10+ and Docker Compose v2 are required for the examples. The Compose file starts the RTMP server and its management panel together.
 
+The OpenRTMP-based `alexanderwagnerdev/rtmp-server:beta` image must be published and available in the registry before using the installer or Docker Compose.
+
 ### Interactive installer
 
 ```bash
@@ -93,6 +95,8 @@ See [LICENSE](LICENSE). Upstream components retain their respective licenses.
 Branch **beta**: OpenRTMP-Server mit RTMPPanel, persistenten Daten und konfigurierbarer Anmeldung. Die Struktur folgt SRTLA-Server und SLSPanel: Compose-Datei, Umgebungsbeispiel, Konfiguration, Fehlerbehebung und Projektlinks.
 
 ## 🚀 Schnellstart
+
+Das OpenRTMP-basierte Image `alexanderwagnerdev/rtmp-server:beta` muss veröffentlicht und in der Registry verfügbar sein, bevor der Installer oder Docker Compose verwendet wird.
 
 Den oben gezeigten Branch klonen, `.env.example` nach `.env` kopieren und API-Token, festen `SECRET_KEY`, Passwort und öffentliche Domain eintragen. API-Token und Secret mit jeweils einem eigenen Aufruf von `openssl rand -hex 32` erzeugen. Danach `docker compose config --quiet` und `docker compose up -d` ausführen.
 
