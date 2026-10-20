@@ -268,11 +268,10 @@ function ensure_openrtmp_network() {
 
 function connect_rtmp_backend() {
   ensure_openrtmp_network
-  if docker container inspect rtmp-server >/dev/null 2>&1; then
-    if ! docker inspect rtmp-server --format \
+  if docker container inspect rtmp-server >/dev/null 2>&1 &&
+    ! docker inspect rtmp-server --format \
       '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' | grep -qx openrtmp; then
-      docker network connect openrtmp rtmp-server
-    fi
+    docker network connect openrtmp rtmp-server
   fi
 }
 
