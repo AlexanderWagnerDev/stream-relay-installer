@@ -91,7 +91,7 @@ function read_port () {
   local prompt="$1"
   local default_port="$2"
   local response
-  echo -n "$prompt [$default_port]: "
+  echo -n "$prompt [$default_port]: " >&2
   read -r response
   if [[ -z "$response" ]]; then
     response=$default_port
@@ -261,7 +261,7 @@ function print_available_services() {
     echo -e "${SUCCESS}SRT Player URL ZUM EMPFANGEN (Beispiel): srt://${p_public_ip}:${p_srt_player_port}?streamid=playkey${NC}"
     echo -e "${SUCCESS}SRT/SRTLA Statistiken URL (Beispiel): http://${p_public_ip}:${p_sls_stats_port}/stats/playkey${NC}"
     echo -e "${SUCCESS}RTMP Statistiken/API URL: http://${p_public_ip}:${p_rtmp_stats_port}/api/v1/health${NC}"
-    echo -e "${SUCCESS}RTMP URL ZUM SENDEN UND EMPFANGEN (Beispiel): rtmp://${p_public_ip}:${p_rtmp_port}/live/DEIN_PUBLISH_KEY${NC}"
+    echo -e "${SUCCESS}RTMP Sende-URL (Beispiel; Wiedergabe-URL im Panel): rtmp://${p_public_ip}:${p_rtmp_port}/live/DEIN_PUBLISH_KEY${NC}"
     if [[ -n "$p_rtmppanel_port" ]]; then
       echo -e "${SUCCESS}RTMPPanel UI: http://${p_public_ip}:${p_rtmppanel_port}${NC}"
     fi
@@ -275,7 +275,7 @@ function print_available_services() {
     echo -e "${SUCCESS}SRT Player URL TO RECEIVE (Example): srt://${p_public_ip}:${p_srt_player_port}?streamid=playkey${NC}"
     echo -e "${SUCCESS}SRT/SRTLA Statistics URL (Example): http://${p_public_ip}:${p_sls_stats_port}/stats/playkey${NC}"
     echo -e "${SUCCESS}RTMP Stats/API URL: http://${p_public_ip}:${p_rtmp_stats_port}/api/v1/health${NC}"
-    echo -e "${SUCCESS}RTMP URL FOR SENDING AND RECEIVING (Example): rtmp://${p_public_ip}:${p_rtmp_port}/live/YOUR_PUBLISH_KEY${NC}"
+    echo -e "${SUCCESS}RTMP publish URL (example; get playback URL from panel): rtmp://${p_public_ip}:${p_rtmp_port}/live/YOUR_PUBLISH_KEY${NC}"
     if [[ -n "$p_rtmppanel_port" ]]; then
       echo -e "${SUCCESS}RTMPPanel UI: http://${p_public_ip}:${p_rtmppanel_port}${NC}"
     fi
@@ -359,6 +359,10 @@ function recreate_container() {
   local -a run_args=()
 
   while IFS= read -r port_entry; do
+    # Preserve the published host port when migrating the nginx container.
+    if [[ "$cname" == "rtmp-server" && "$port_entry" == *:80/tcp ]]; then
+      port_entry="${port_entry%:80/tcp}:8080/tcp"
+    fi
     [[ -n "$port_entry" ]] && run_args+=(-p "$port_entry")
   done < <(docker inspect "$cname" --format \
     '{{range $p, $confs := .HostConfig.PortBindings}}{{range $confs}}{{.HostPort}}:{{$p}} {{end}}{{end}}' \
@@ -370,6 +374,10 @@ function recreate_container() {
     fi
   done < <(docker inspect "$cname" --format \
     '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null)
+
+  if [[ "$cname" == "rtmppanel" && -s .rtmp_api_token ]]; then
+    run_args+=(-e "LRTMP2_API_TOKEN=$(cat .rtmp_api_token)")
+  fi
 
   if [[ "$cname" == "wud" ]]; then
     local wud_existing_env
@@ -390,6 +398,11 @@ function recreate_container() {
     if ! grep -q '^WUD_WATCHER_LOCAL_WATCHDIGESTDEFAULT=' <<< "$wud_existing_env"; then
       run_args+=(-e "WUD_WATCHER_LOCAL_WATCHDIGESTDEFAULT=true")
     fi
+  fi
+
+  if [[ "$cname" == "rtmp-server" ]] && ! docker inspect "$cname" --format \
+    '{{range .Mounts}}{{println .Destination}}{{end}}' | grep -qx /data; then
+    run_args+=(-v rtmp-server-data:/data)
   fi
 
   if [[ "$cname" == "srtla-server" ]]; then
@@ -413,20 +426,11 @@ function recreate_container() {
     '{{range $k, $v := .Config.Labels}}{{$k}}={{$v}} {{end}}' \
     2>/dev/null | tr ' ' '\n' | grep -v '^$')
 
+  # Download before removing the running container so a registry outage
+  # leaves the existing service available.
+  docker_pull_fallback "$image" "$fallback_image"
   docker stop "$cname" 2>/dev/null || true
   docker rm "$cname" 2>/dev/null || true
-
-  [[ "$lang" == "de" ]] && echo -e "${INFO}Entferne alte Images...${NC}" || echo -e "${INFO}Removing old images...${NC}"
-  docker rmi -f "$image" 2>/dev/null || true
-  docker rmi -f "$fallback_image" 2>/dev/null || true
-  local image_base
-  image_base=$(echo "$image" | cut -d':' -f1)
-  docker images --format "{{.Repository}}:{{.Tag}}" | grep "^${image_base}:" | xargs -r docker rmi -f 2>/dev/null || true
-  local fallback_base
-  fallback_base=$(echo "$fallback_image" | cut -d':' -f1)
-  docker images --format "{{.Repository}}:{{.Tag}}" | grep "^${fallback_base}:" | xargs -r docker rmi -f 2>/dev/null || true
-
-  docker_pull_fallback "$image" "$fallback_image"
 
   local restart_flag=""
   if [[ "$restart_policy" == "unless-stopped" ]]; then
@@ -466,6 +470,14 @@ function update_services() {
 
   for i in "${!containers[@]}"; do
     recreate_container "${containers[$i]}" "${images[$i]}" "${fallback_images[$i]}"
+    if [[ "${containers[$i]}" == "rtmp-server" ]] && docker ps --format '{{.Names}}' | grep -qx rtmp-server; then
+      local new_rtmp_token
+      new_rtmp_token=$(extract_rtmp_api_token_with_retry) || true
+      if [[ -n "$new_rtmp_token" ]]; then
+        (umask 077; echo "$new_rtmp_token" > .rtmp_api_token)
+        chmod 600 .rtmp_api_token
+      fi
+    fi
   done
 
   [[ "$lang" == "de" ]] && echo -e "${SUCCESS}=== Container-Update abgeschlossen ===${NC}" || echo -e "${SUCCESS}=== Container update completed ===${NC}"
@@ -519,14 +531,6 @@ function uninstall_services() {
     fi
   fi
 
-  if [[ -f ".rtmp_api_token" ]]; then
-    rm -f ".rtmp_api_token"
-    if [[ "$lang" == "de" ]]; then
-      echo -e "${SUCCESS}RTMP API-Token Datei (.rtmp_api_token) gelöscht.${NC}"
-    else
-      echo -e "${SUCCESS}RTMP API token file (.rtmp_api_token) deleted.${NC}"
-    fi
-  fi
 
   if [[ "$lang" == "de" ]]; then
     read -rp $'\033[1;33mSollen auch Volumes gelöscht werden? (j/n):\033[0m ' rmvol
@@ -534,7 +538,7 @@ function uninstall_services() {
       docker volume rm srtla-server 2>/dev/null || true
       docker volume rm rtmp-server-data 2>/dev/null || true
       docker volume rm rtmppanel-data 2>/dev/null || true
-      rm -f ".rtmppanel_secret"
+      rm -f ".rtmppanel_secret" ".rtmp_api_token"
       echo -e "${SUCCESS}Docker-Volumes (srtla-server, rtmp-server-data, rtmppanel-data) entfernt.${NC}"
     else
       echo -e "${INFO}Volumes bleiben erhalten.${NC}"
@@ -546,7 +550,7 @@ function uninstall_services() {
       docker volume rm srtla-server 2>/dev/null || true
       docker volume rm rtmp-server-data 2>/dev/null || true
       docker volume rm rtmppanel-data 2>/dev/null || true
-      rm -f ".rtmppanel_secret"
+      rm -f ".rtmppanel_secret" ".rtmp_api_token"
       echo -e "${SUCCESS}Docker volumes (srtla-server, rtmp-server-data, rtmppanel-data) removed.${NC}"
     else
       echo -e "${INFO}Volumes are kept.${NC}"
@@ -956,8 +960,8 @@ if [[ "$mainaction" == "1" ]]; then
           --label "wud.watch.digest=true" \
           --label "wud.tag.include=^own$" \
           -e REQUIRE_LOGIN=True \
-          -e WEB_USERNAME="${slspanel_username}" \
-          -e WEB_PASSWORD="${slspanel_password}" \
+          -e USERNAME="${slspanel_username}" \
+          -e PASSWORD="${slspanel_password}" \
           -e SLS_API_URL="${slspanel_api_url}" \
           -e SLS_API_KEY="${apikey}" \
           -e SLS_DOMAIN_IP="${public_ip}" \
@@ -971,8 +975,8 @@ if [[ "$mainaction" == "1" ]]; then
       else
         docker run -d --name slspanel --restart unless-stopped \
           -e REQUIRE_LOGIN=True \
-          -e WEB_USERNAME="${slspanel_username}" \
-          -e WEB_PASSWORD="${slspanel_password}" \
+          -e USERNAME="${slspanel_username}" \
+          -e PASSWORD="${slspanel_password}" \
           -e SLS_API_URL="${slspanel_api_url}" \
           -e SLS_API_KEY="${apikey}" \
           -e SLS_DOMAIN_IP="${public_ip}" \
