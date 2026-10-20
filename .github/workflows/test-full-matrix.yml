@@ -19,6 +19,8 @@ jobs:
       - uses: actions/checkout@v6
       - name: Install shellcheck
         run: sudo apt-get install -y shellcheck
+      - name: Test OpenRTMP installation and nginx migration
+        run: python3 -m unittest discover -s tests -v
       - name: Run ShellCheck
         run: shellcheck -e SC1091,SC2034,SC2162,SC2181,SC2155,SC2046,SC2086 install.sh
 
