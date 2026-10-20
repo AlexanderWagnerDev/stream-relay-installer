@@ -14,7 +14,9 @@ import json, os, sys
 a = sys.argv[1:]
 with open(os.environ['CALLS'], 'a') as f:
     f.write(json.dumps(a) + '\n')
-if a[0] == 'logs':
+if a[0] == 'logs' and a[1] == 'srtla-server':
+    print('Generated default admin API key: ' + 'c' * 64)
+elif a[0] == 'logs':
     print('Generated API token (stored in database /data/server.db):\n' + 'a' * 64)
 elif a[0] == 'inspect':
     fmt = a[-1]
@@ -35,7 +37,7 @@ class OpenRTMPTest(unittest.TestCase):
         bindir = self.root / 'bin'
         bindir.mkdir()
         for name, code in {'docker': MOCK, 'sleep': '#!/bin/sh\nexit 0\n',
-                           'curl': '#!/bin/sh\necho 192.0.2.10\n'}.items():
+                           'sudo': '#!/bin/sh\nexit 0\n', 'curl': '#!/bin/sh\necho 192.0.2.10\n'}.items():
             p = bindir / name
             p.write_text(code)
             p.chmod(0o755)
@@ -88,6 +90,15 @@ class OpenRTMPTest(unittest.TestCase):
         self.assertIn('rtmp-server-data:/data', run)
         self.assertLess(next(i for i, a in enumerate(calls) if a[0] == 'pull'),
                         next(i for i, a in enumerate(calls) if a[0] == 'stop'))
+
+    def test_sls_panel_uses_documented_login_variables(self):
+        calls = self.run_script(['2', '1', 'n', 'n', 'n', 'y', 'n', 'n',
+                                 'n', 'y', 'y', 'y', 'admin', 'test-password', 'n'])
+        panel = next(a for a in calls if a[:4] == ['run', '-d', '--name', 'slspanel'])
+        self.assertIn('USERNAME=admin', panel)
+        self.assertIn('PASSWORD=test-password', panel)
+        self.assertIn('SLS_API_KEY=' + 'c' * 64, panel)
+        self.assertFalse(any(a.startswith('WEB_USERNAME=') or a.startswith('WEB_PASSWORD=') for a in panel))
 
     def test_uninstall_keeps_credentials_with_volumes(self):
         for name in ['.rtmp_api_token', '.rtmppanel_secret']:

@@ -1,3 +1,5 @@
+.env
+.env.local
 __pycache__/
 *.pyc
 .rtmp_api_token

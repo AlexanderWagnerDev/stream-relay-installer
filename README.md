@@ -1,122 +1,111 @@
-<img src="https://assets.stream-relay-installer.de/Logo.webp" alt="Logo" width="400" />
+# Stream Relay Installer
 
-# Stream Relay Installer  
+[![Docker Hub](https://img.shields.io/docker/pulls/alexanderwagnerdev/rtmp-server?style=flat-square)](https://hub.docker.com/r/alexanderwagnerdev/rtmp-server)
+[![License](https://img.shields.io/github/license/AlexanderWagnerDev/stream-relay-installer?style=flat-square)](LICENSE)
 
-This script installs **Docker** along with an **RTMP** and **SRTLA relay server** on Debian and Ubuntu systems. It requires root access and sets up a complete stream relay environment.
+Interactive Debian/Ubuntu installer for OpenRTMP, RTMPPanel, SRTLA and SLSPanel.
 
----
+Branch: **main** · Server image: `alexanderwagnerdev/rtmp-server:latest` · Panel image: `alexanderwagnerdev/rtmppanel:latest`.
 
-## Features
+## ✨ Features
 
-- Installs Docker  
-- Sets up RTMP and SRTLA relay server  
-- Supports English and German languages  
-- Designed for Debian and Ubuntu  
-- Can run on a fresh system  
-- Server fully operational after reboot  
+- OpenRTMP HTTP API, stream management and live statistics
+- RTMPPanel with configurable authentication
+- Persistent SQLite data and a stable panel encryption secret
+- Docker Hub/GHCR images and Docker Compose deployment
 
----
+## 🚀 Quick Start
 
-## Included Software
+The [stream-relay-installer](https://github.com/AlexanderWagnerDev/stream-relay-installer/tree/main) offers guided setup and service management. Docker Engine 20.10+ and Docker Compose v2 are required for the examples. The Compose file starts the RTMP server and its management panel together.
 
-- **RTMP Server** – [AlexanderWagnerDev/rtmp-server-docker](https://github.com/AlexanderWagnerDev/rtmp-server-docker) 
-- **SRTLA Relay Server** – [AlexanderWagnerDev/srtla-server-docker](https://github.com/AlexanderWagnerDev/srtla-server-docker)
-- **RTMPPanel** – [AlexanderWagnerDev/rtmppanel-docker](https://github.com/AlexanderWagnerDev/rtmppanel-docker)
-- **SLSPanel** - [AlexanderWagnerDev/slspanel-docker](https://github.com/AlexanderWagnerDev/slspanel-docker)
-- WUD - [getwud/wud](https://github.com/getwud/wud)
+### Interactive installer
 
-SRTLA Server is based on [OpenIRL](https://github.com/OpenIRL)
-
----
-
-## Requirements
-
-- Debian or Ubuntu system  
-- Root or sudo access  
-- Internet connection for downloading required packages  
-
----
-
-## Installation
-
-Run the following command to start the installation:
 ```bash
-bash <(curl -fsSL https://install.stream-relay-installer.de)
+curl -fL --proto '=https' --tlsv1.2 -o install.sh https://raw.githubusercontent.com/AlexanderWagnerDev/stream-relay-installer/main/install.sh
+bash install.sh
 ```
 
+Choose German/English, installation or lifecycle action, services, ports and panel login. The script uses `latest` images for RTMP, RTMPPanel, SRTLA and SLSPanel; WUD retains its own latest tag. Start/stop/update/uninstall include RTMPPanel. Credentials are stored in `.rtmp_api_token` and `.rtmppanel_secret` with mode 600. Keep the secret with the panel database.
 
-After the script finishes, reboot your system for the changes to take effect.
+### Docker Compose
 
----
-
-## Usage
-
-Once rebooted, your stream relay server will be ready to use with default configurations.
-
----
-
-## Deutsch
-
-Dieses Skript installiert **Docker** sowie einen **RTMP**- und **SRTLA-Relay-Server** auf Debian- und Ubuntu-Systemen. Es benötigt Root-Zugriff und richtet eine vollständige Stream-Relay-Umgebung ein.
-
----
-
-## Funktionen
-
-- Installation von Docker  
-- Einrichtung von RTMP- und SRTLA-Relay-Server  
-- Unterstützung von Deutsch und Englisch  
-- Entwickelt für Debian und Ubuntu  
-- Kann auf einem frischen System ausgeführt werden  
-- Server nach Neustart einsatzbereit  
-
----
-
-## Enthaltene Software
-
-- **RTMP Server** – [AlexanderWagnerDev/rtmp-server-docker](https://github.com/AlexanderWagnerDev/rtmp-server-docker) 
-- **SRTLA Relay Server** – [AlexanderWagnerDev/srtla-server-docker](https://github.com/AlexanderWagnerDev/srtla-server-docker)
-- **RTMPPanel** – [AlexanderWagnerDev/rtmppanel-docker](https://github.com/AlexanderWagnerDev/rtmppanel-docker)
-- **SLSPanel** - [AlexanderWagnerDev/slspanel-docker](https://github.com/AlexanderWagnerDev/slspanel-docker)
-- WUD - [getwud/wud](https://github.com/getwud/wud)
-
-SRTLA Server basierend auf [OpenIRL](https://github.com/OpenIRL)
-
----
-
-## Voraussetzungen
-
-- Debian- oder Ubuntu-System  
-- Root- oder sudo-Zugriff  
-- Internetverbindung zum Herunterladen der erforderlichen Pakete  
-
----
-
-## Installation
-
-Führe den folgenden Befehl aus, um die Installation zu starten:
 ```bash
-bash <(curl -fsSL https://install.stream-relay-installer.de)
+git clone --branch main https://github.com/AlexanderWagnerDev/stream-relay-installer.git
+cd stream-relay-installer
+cp .env.example .env
+# Edit .env: API token, stable SECRET_KEY, password and public domain.
+# Generate API token and SECRET_KEY separately: openssl rand -hex 32
+docker compose config --quiet
+docker compose up -d
 ```
 
-Nach Abschluss des Skripts den Server neu starten, damit die Änderungen übernommen werden.
+Panel: `http://localhost:8001`. Backend health: `http://localhost:8090/api/v1/health`.
+
+## 📖 Usage
+
+Create streams in RTMPPanel and copy the provided publish, playback and statistics URLs. Publishing and playback keys may differ. The default application is `live`; freely chosen nginx `/publish/key` URLs do not create streams.
+
+```bash
+docker compose ps
+docker compose logs -f rtmp-server
+```
+
+## 🔌 Ports
+
+| Service | Host | Container | Protocol |
+| --- | --- | --- | --- |
+| RTMP | 1935 | 1935 | TCP |
+| RTMP API | 8090 | 8080 | TCP |
+| RTMPPanel | 8001 | 8000 | TCP |
+
+The panel reaches the API over the shared Compose network.
+
+## ⚙️ Configuration and storage
+
+See [configuration](docs/configuration.md) for all environment settings, networking, storage and troubleshooting, and [migration](docs/migration.md) for the nginx transition. Copy `.env.example`, generate credentials, and keep `.env` and volume backups private. The panel `SECRET_KEY` must stay unchanged across updates.
+
+## 🔄 Updates
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Retain the same Compose project name, `.env` and named volumes. Do not combine a Compose deployment with a shell-installer deployment using the same names/ports. `docker compose down -v` deletes stored data.
+
+## 📦 Built With / Related Projects
+
+- [OpenRTMP/librtmp2-server](https://github.com/OpenRTMP/librtmp2-server)
+- [OpenRTMP/librtmp2-server-panel](https://github.com/OpenRTMP/librtmp2-server-panel)
+- [RTMP server Docker](https://github.com/AlexanderWagnerDev/rtmp-server-docker)
+- [RTMPPanel Docker](https://github.com/AlexanderWagnerDev/rtmppanel-docker)
+- [SRTLA server Docker](https://github.com/AlexanderWagnerDev/srtla-server-docker)
+- [SLSPanel Docker](https://github.com/AlexanderWagnerDev/slspanel-docker)
+
+## 📄 License
+
+See [LICENSE](LICENSE). Upstream components retain their respective licenses.
 
 ---
 
-## Nutzung
+# Stream Relay Installer (Deutsch)
 
-Nach dem Neustart ist dein Stream-Relay-Server mit den Standardkonfigurationen einsatzbereit.
+Branch **main**: OpenRTMP-Server mit RTMPPanel, persistenten Daten und konfigurierbarer Anmeldung. Die Struktur folgt SRTLA-Server und SLSPanel: Compose-Datei, Umgebungsbeispiel, Konfiguration, Fehlerbehebung und Projektlinks.
 
----
+## 🚀 Schnellstart
 
-## License
+Den oben gezeigten Branch klonen, `.env.example` nach `.env` kopieren und API-Token, festen `SECRET_KEY`, Passwort und öffentliche Domain eintragen. API-Token und Secret mit jeweils einem eigenen Aufruf von `openssl rand -hex 32` erzeugen. Danach `docker compose config --quiet` und `docker compose up -d` ausführen.
 
-MIT
+Die Compose-Datei startet Server und Panel gemeinsam; das Panel erreicht den Server intern über `rtmp-server:8080`.
 
-## OpenRTMP
+## 📖 Verwendung und Konfiguration
 
-RTMP now uses OpenRTMP/librtmp2-server with HTTP API on host port 8090 (container 8080). RTMPPanel is optional on port 8001; SLSPanel remains on 8000. The installer stores the API token in `.rtmp_api_token`, the stable encryption secret in `.rtmppanel_secret` (mode 600), and databases in `rtmp-server-data` and `rtmppanel-data`. Keep the secret together with the panel database.
+Das Panel läuft standardmäßig auf Port **8001**, die RTMP-API auf **8090**, RTMP auf **1935**. Streams im Panel anlegen und die dort angezeigten Sende-, Wiedergabe- und Statistik-URLs verwenden. Sende- und Wiedergabe-Keys können verschieden sein.
 
-Updates remap legacy nginx HTTP port 80 to 8080 while retaining the host port and add persistent server storage. Old arbitrary nginx stream keys must be recreated in RTMPPanel. Use the publish and playback URLs shown in the panel. Build/publish the new RTMP latest image before running the updated installer.
+[Konfiguration und Fehlerbehebung](docs/configuration.md) · [Migration von nginx](docs/migration.md)
 
-RTMP basiert jetzt auf OpenRTMP. RTMPPanel läuft optional auf Port 8001. API-Token, Verschlüsselungs-Secret und Datenbanken bleiben für Updates erhalten. Beim Wechsel von nginx werden HTTP-Port und Datenvolume angepasst; bisherige Streams im Panel neu anlegen und die dort angezeigten URLs verwenden. Das neue RTMP-latest-Image muss vor der Installation veröffentlicht sein.
+Bei Updates `.env`, denselben Compose-Projektnamen, Datenvolumes und den festen `SECRET_KEY` behalten. `docker compose down -v` löscht Daten. Den interaktiven Installer und Compose als getrennte Installationswege behandeln; beim Wechsel Daten ausdrücklich migrieren.
+
+## 📄 Lizenz
+
+Details siehe [LICENSE](LICENSE).
