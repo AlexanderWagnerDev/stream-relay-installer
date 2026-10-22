@@ -474,6 +474,12 @@ function recreate_container() {
     if ! grep -q '^WUD_WATCHER_LOCAL_WATCHDIGESTDEFAULT=' <<< "$wud_existing_env"; then
       run_args+=(-e "WUD_WATCHER_LOCAL_WATCHDIGESTDEFAULT=true")
     fi
+    if ! grep -q '^WUD_WATCHER_LOCAL_WATCHALL=' <<< "$wud_existing_env"; then
+      run_args+=(-e "WUD_WATCHER_LOCAL_WATCHALL=true")
+    fi
+    if ! grep -q '^WUD_TRIGGER_DOCKER_LOCAL_SELFUPDATE=' <<< "$wud_existing_env"; then
+      run_args+=(-e "WUD_TRIGGER_DOCKER_LOCAL_SELFUPDATE=true")
+    fi
   fi
 
   if [[ "$cname" == "rtmp-server" ]] && ! docker inspect "$cname" --format \
@@ -984,7 +990,9 @@ if [[ "$mainaction" == "1" ]]; then
       -e "WUD_AUTH_ADMIN_PASSWORD=$wud_admin_password" \
       -e WUD_WATCHER_LOCAL_WATCHBYDEFAULT=true \
       -e WUD_WATCHER_LOCAL_WATCHDIGESTDEFAULT=true \
+      -e WUD_WATCHER_LOCAL_WATCHALL=true \
       -e WUD_TRIGGER_DOCKER_LOCAL_PRUNE=true \
+      -e WUD_TRIGGER_DOCKER_LOCAL_SELFUPDATE=true \
       getwud/wud:latest
   else
     echo -e "$wud_skip_msg"
