@@ -8,7 +8,7 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Validate Compose configuration
         env:
           LRTMP2_API_TOKEN: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -16,7 +16,7 @@ jobs:
           PANEL_PASSWORD: validation-only-password
         run: docker compose config --quiet
       - name: Check panel startup configuration from the matching upstream channel
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: OpenRTMP/librtmp2-server-panel
           ref: v0.1.10
