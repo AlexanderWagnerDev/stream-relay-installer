@@ -108,11 +108,45 @@ class OpenRTMPTest(unittest.TestCase):
         calls = self.run_script(['2', '1', 'n', 'n', 'n', 'y', 'n', 'n',
                                  'n', 'y', 'y', 'y', 'admin', 'test-password', 'n'])
         panel = next(a for a in calls if a[:4] == ['run', '-d', '--name', 'slspanel'])
-        self.assertIn('USERNAME=admin', panel)
-        self.assertIn('PASSWORD=test-password', panel)
+        self.assertIn('WEB_USERNAME=admin', panel)
+        self.assertIn('WEB_PASSWORD=test-password', panel)
         self.assertIn('SLS_API_KEY=' + 'c' * 64, panel)
-        self.assertFalse(any(a.startswith('WEB_USERNAME=') or a.startswith('WEB_PASSWORD=') for a in panel))
+        self.assertFalse(any(a.startswith('USERNAME=') or a.startswith('PASSWORD=') for a in panel))
         self.assertNotIn('RTMPPanel UI:', self.last_result.stdout)
+
+    def test_sls_panel_update_migrates_legacy_login_variables(self):
+        self.env['MOCK_CONTAINER_ENV'] = (
+            'REQUIRE_LOGIN=True\n'
+            'USERNAME=alice\n'
+            'PASSWORD=chosen-secret\n'
+            'SLS_API_KEY=' + 'c' * 64 + '\n'
+            'SLS_API_URL=http://sls-backend:8789'
+        )
+        calls = self.run_script([], self.helper_script(
+            'recreate_container slspanel image fallback'))
+        panel = next(a for a in calls if a[:4] == ['run', '-d', '--name', 'slspanel'])
+        self.assertIn('WEB_USERNAME=alice', panel)
+        self.assertIn('WEB_PASSWORD=chosen-secret', panel)
+        self.assertIn('SLS_API_KEY=' + 'c' * 64, panel)
+        self.assertIn('SLS_API_URL=http://sls-backend:8789', panel)
+        self.assertIn('REQUIRE_LOGIN=True', panel)
+        self.assertFalse(any(a.startswith('USERNAME=') or a.startswith('PASSWORD=') for a in panel))
+
+    def test_sls_panel_update_preserves_existing_web_credentials(self):
+        self.env['MOCK_CONTAINER_ENV'] = (
+            'USERNAME=old\n'
+            'PASSWORD=old-secret\n'
+            'WEB_USERNAME=new\n'
+            'WEB_PASSWORD=new-secret\n'
+            'SLS_API_KEY=' + 'c' * 64
+        )
+        calls = self.run_script([], self.helper_script(
+            'recreate_container slspanel image fallback'))
+        panel = next(a for a in calls if a[:4] == ['run', '-d', '--name', 'slspanel'])
+        self.assertIn('WEB_USERNAME=new', panel)
+        self.assertIn('WEB_PASSWORD=new-secret', panel)
+        self.assertIn('SLS_API_KEY=' + 'c' * 64, panel)
+        self.assertFalse(any(a.startswith('USERNAME=') or a.startswith('PASSWORD=') for a in panel))
 
     def helper_script(self, body):
         functions = SCRIPT.read_text().split('echo "Wähle Sprache / Choose language:"')[0]
