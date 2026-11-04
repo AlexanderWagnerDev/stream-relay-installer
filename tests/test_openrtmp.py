@@ -29,7 +29,7 @@ elif a[0] == 'inspect':
     elif 'NetworkSettings.Networks' in fmt: print(os.environ.get('MOCK_NETWORKS', 'bridge'))
     elif 'Config.Env' in fmt: print(os.environ.get('MOCK_CONTAINER_ENV', ''))
 elif a[0] == 'ps':
-    print('rtmp-server\nrtmppanel')
+    print(os.environ.get('MOCK_CONTAINERS', 'rtmp-server\nrtmppanel'))
 '''
 
 
@@ -115,6 +115,7 @@ class OpenRTMPTest(unittest.TestCase):
         self.assertNotIn('RTMPPanel UI:', self.last_result.stdout)
 
     def test_sls_panel_update_migrates_legacy_login_variables(self):
+        self.env['MOCK_CONTAINERS'] = 'slspanel'
         self.env['MOCK_CONTAINER_ENV'] = (
             'REQUIRE_LOGIN=True\n'
             'USERNAME=alice\n'
@@ -133,6 +134,7 @@ class OpenRTMPTest(unittest.TestCase):
         self.assertFalse(any(a.startswith('USERNAME=') or a.startswith('PASSWORD=') for a in panel))
 
     def test_sls_panel_update_preserves_existing_web_credentials(self):
+        self.env['MOCK_CONTAINERS'] = 'slspanel'
         self.env['MOCK_CONTAINER_ENV'] = (
             'USERNAME=old\n'
             'PASSWORD=old-secret\n'
