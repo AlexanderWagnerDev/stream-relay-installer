@@ -430,12 +430,32 @@ function recreate_container() {
     '{{range $p, $confs := .HostConfig.PortBindings}}{{range $confs}}{{.HostPort}}:{{$p}} {{end}}{{end}}' \
     2>/dev/null | tr ' ' '\n' | grep -v '^$')
 
+  # Migrate legacy SLSPanel login variables while keeping all other
+  # container environment settings (including SLS_API_KEY) unchanged.
+  local existing_env
+  existing_env=$(docker inspect "$cname" --format \
+    '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null) || return 1
   while IFS= read -r env_entry; do
+    if [[ "$cname" == "slspanel" ]]; then
+      case "$env_entry" in
+        USERNAME=*)
+          if grep -q '^WEB_USERNAME=' <<< "$existing_env"; then
+            continue
+          fi
+          env_entry="WEB_USERNAME=${env_entry#USERNAME=}"
+          ;;
+        PASSWORD=*)
+          if grep -q '^WEB_PASSWORD=' <<< "$existing_env"; then
+            continue
+          fi
+          env_entry="WEB_PASSWORD=${env_entry#PASSWORD=}"
+          ;;
+      esac
+    fi
     if [[ -n "$env_entry" && "$env_entry" != PATH=* && "$env_entry" != HOME=* ]]; then
       run_args+=(-e "$env_entry")
     fi
-  done < <(docker inspect "$cname" --format \
-    '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null)
+  done <<< "$existing_env"
 
   if [[ "$cname" == "rtmppanel" ]]; then
     connect_rtmp_backend
