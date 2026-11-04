@@ -1041,8 +1041,8 @@ if [[ "$mainaction" == "1" ]]; then
           --label "wud.watch.digest=true" \
           --label "wud.tag.include=^own$" \
           -e REQUIRE_LOGIN=True \
-          -e USERNAME="${slspanel_username}" \
-          -e PASSWORD="${slspanel_password}" \
+          -e WEB_USERNAME="${slspanel_username}" \
+          -e WEB_PASSWORD="${slspanel_password}" \
           -e SLS_API_URL="${slspanel_api_url}" \
           -e SLS_API_KEY="${apikey}" \
           -e SLS_DOMAIN_IP="${public_ip}" \
@@ -1056,8 +1056,8 @@ if [[ "$mainaction" == "1" ]]; then
       else
         docker run -d --name slspanel --restart unless-stopped \
           -e REQUIRE_LOGIN=True \
-          -e USERNAME="${slspanel_username}" \
-          -e PASSWORD="${slspanel_password}" \
+          -e WEB_USERNAME="${slspanel_username}" \
+          -e WEB_PASSWORD="${slspanel_password}" \
           -e SLS_API_URL="${slspanel_api_url}" \
           -e SLS_API_KEY="${apikey}" \
           -e SLS_DOMAIN_IP="${public_ip}" \
