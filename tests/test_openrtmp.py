@@ -178,9 +178,9 @@ class OpenRTMPTest(unittest.TestCase):
                     (self.root / 'calls').write_text('')
                     self.env['MOCK_CONTAINERS'] = 'slspanel'
                     self.env['MOCK_CONTAINER_ENV'] = (
-                        'REQUIRE_LOGIN=True\\n'
-                        'USERNAME=admin\\n'
-                        + key + '=' + bad_password + '\\n'
+                        'REQUIRE_LOGIN=True\n'
+                        'USERNAME=admin\n'
+                        + key + '=' + bad_password + '\n'
                     )
                     script = self.helper_script('recreate_container slspanel image fallback')
                     result = subprocess.run(['bash', str(script)], cwd=self.root,
@@ -194,10 +194,10 @@ class OpenRTMPTest(unittest.TestCase):
         """An empty current credential must override a populated legacy credential."""
         self.env['MOCK_CONTAINERS'] = 'slspanel'
         self.env['MOCK_CONTAINER_ENV'] = (
-            'REQUIRE_LOGIN=True\\n'
-            'USERNAME=admin\\n'
-            'PASSWORD=\\n'
-            'WEB_PASSWORD=legacy-secure-password\\n'
+            'REQUIRE_LOGIN=True\n'
+            'USERNAME=admin\n'
+            'PASSWORD=\n'
+            'WEB_PASSWORD=legacy-secure-password\n'
         )
         script = self.helper_script('recreate_container slspanel image fallback')
         result = subprocess.run(['bash', str(script)], cwd=self.root,
@@ -211,10 +211,10 @@ class OpenRTMPTest(unittest.TestCase):
         """Do not use WEB_USERNAME when USERNAME was explicitly set to empty."""
         self.env['MOCK_CONTAINERS'] = 'slspanel'
         self.env['MOCK_CONTAINER_ENV'] = (
-            'REQUIRE_LOGIN=True\\n'
-            'USERNAME=\\n'
-            'WEB_USERNAME=old-admin\\n'
-            'PASSWORD=secure-password\\n'
+            'REQUIRE_LOGIN=True\n'
+            'USERNAME=\n'
+            'WEB_USERNAME=old-admin\n'
+            'PASSWORD=secure-password\n'
         )
         calls = self.run_script([], self.helper_script(
             'recreate_container slspanel image fallback'))
@@ -267,8 +267,8 @@ class OpenRTMPTest(unittest.TestCase):
         self.env['SLS_STATS_SCHEME'] = 'https'
         self.env['SLS_STATS_PUBLIC_DOMAIN_IP'] = 'stats.example.com'
         self.env['MOCK_CONTAINER_ENV'] = (
-            'REQUIRE_LOGIN=True\\nUSERNAME=admin\\nPASSWORD=secure-password\\n'
-            'SLS_STATS_SCHEME=http\\nSLS_STATS_PUBLIC_DOMAIN_IP=stats.old.example\\n'
+            'REQUIRE_LOGIN=True\nUSERNAME=admin\nPASSWORD=secure-password\n'
+            'SLS_STATS_SCHEME=http\nSLS_STATS_PUBLIC_DOMAIN_IP=stats.old.example\n'
         )
         calls = self.run_script([], self.helper_script(
             'recreate_container slspanel image fallback'))
@@ -282,8 +282,8 @@ class OpenRTMPTest(unittest.TestCase):
         """Reject an invalid saved scheme before changing the running container."""
         self.env['MOCK_CONTAINERS'] = 'slspanel'
         self.env['MOCK_CONTAINER_ENV'] = (
-            'REQUIRE_LOGIN=True\\nUSERNAME=admin\\nPASSWORD=secure-password\\n'
-            'SLS_STATS_SCHEME=ftp\\n'
+            'REQUIRE_LOGIN=True\nUSERNAME=admin\nPASSWORD=secure-password\n'
+            'SLS_STATS_SCHEME=ftp\n'
         )
         script = self.helper_script('recreate_container slspanel image fallback')
         result = subprocess.run(['bash', str(script)], cwd=self.root,
