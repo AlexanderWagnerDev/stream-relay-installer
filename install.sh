@@ -436,20 +436,39 @@ function recreate_container() {
   existing_env=$(docker inspect "$cname" --format \
     '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null) || return 1
   local sls_username="" sls_password="" sls_old_username="" sls_old_password="" sls_login="false"
+  local sls_username_present=0 sls_password_present=0
+  local sls_stats_public="" sls_stats_scheme="http"
   local env_entry
   if [[ "$cname" == "slspanel" ]]; then
     while IFS= read -r env_entry; do
       case "$env_entry" in
-        USERNAME=*) sls_username="${env_entry#USERNAME=}" ;;
-        PASSWORD=*) sls_password="${env_entry#PASSWORD=}" ;;
+        USERNAME=*) sls_username="${env_entry#USERNAME=}"; sls_username_present=1 ;;
+        PASSWORD=*) sls_password="${env_entry#PASSWORD=}"; sls_password_present=1 ;;
         WEB_USERNAME=*) sls_old_username="${env_entry#WEB_USERNAME=}" ;;
         WEB_PASSWORD=*) sls_old_password="${env_entry#WEB_PASSWORD=}" ;;
         REQUIRE_LOGIN=*) sls_login="${env_entry#REQUIRE_LOGIN=}" ;;
+        SLS_STATS_PUBLIC_DOMAIN_IP=*) sls_stats_public="${env_entry#SLS_STATS_PUBLIC_DOMAIN_IP=}" ;;
+        SLS_STATS_SCHEME=*) sls_stats_scheme="${env_entry#SLS_STATS_SCHEME=}" ;;
         *) ;; # Other environment variables are handled by the pass-through loop.
       esac
     done <<< "$existing_env"
-    sls_username="${sls_username:-$sls_old_username}"
-    sls_password="${sls_password:-$sls_old_password}"
+    # An explicitly empty current value must not fall back to a legacy value.
+    if (( ! sls_username_present )); then sls_username="$sls_old_username"; fi
+    if (( ! sls_password_present )); then sls_password="$sls_old_password"; fi
+    # Explicit installer overrides win; otherwise preserve existing URL settings.
+    if [[ ${SLS_STATS_PUBLIC_DOMAIN_IP+x} ]]; then
+      sls_stats_public="$SLS_STATS_PUBLIC_DOMAIN_IP"
+    fi
+    if [[ ${SLS_STATS_SCHEME+x} ]]; then
+      sls_stats_scheme="${SLS_STATS_SCHEME:-http}"
+    fi
+    case "$sls_stats_scheme" in
+      http|https) ;;
+      *)
+        echo "SLSPanel update blocked: invalid SLS_STATS_SCHEME '$sls_stats_scheme' (expected http or https)." >&2
+        return 1
+        ;;
+    esac
     case "${sls_login,,}" in
       true|1|yes)
         if [[ -z "$sls_password" || "$sls_password" == "password" ]]; then
@@ -467,7 +486,7 @@ function recreate_container() {
   while IFS= read -r env_entry; do
     if [[ "$cname" == "slspanel" ]]; then
       case "$env_entry" in
-        USERNAME=*|PASSWORD=*|WEB_USERNAME=*|WEB_PASSWORD=*) continue ;;
+        USERNAME=*|PASSWORD=*|WEB_USERNAME=*|WEB_PASSWORD=*|SLS_STATS_PUBLIC_DOMAIN_IP=*|SLS_STATS_SCHEME=*) continue ;;
         *) ;; # Keep unrelated container environment variables.
       esac
     fi
@@ -476,8 +495,15 @@ function recreate_container() {
     fi
   done <<< "$existing_env"
   if [[ "$cname" == "slspanel" ]]; then
-    [[ -n "$sls_username" ]] && run_args+=(-e "USERNAME=$sls_username")
-    [[ -n "$sls_password" ]] && run_args+=(-e "PASSWORD=$sls_password")
+    if (( sls_username_present )) || [[ -n "$sls_username" ]]; then
+      run_args+=(-e "USERNAME=$sls_username")
+    fi
+    if (( sls_password_present )) || [[ -n "$sls_password" ]]; then
+      # The Docker client reads PASSWORD from its own environment, not argv.
+      run_args+=(-e PASSWORD)
+    fi
+    run_args+=(-e "SLS_STATS_PUBLIC_DOMAIN_IP=$sls_stats_public")
+    run_args+=(-e "SLS_STATS_SCHEME=$sls_stats_scheme")
   fi
 
   if [[ "$cname" == "rtmppanel" ]]; then
@@ -565,7 +591,7 @@ function recreate_container() {
   fi
 
   # shellcheck disable=SC2086
-  if ! docker run -d --name "$cname" $restart_flag "${run_args[@]}" "$image"; then
+  if ! PASSWORD="$sls_password" docker run -d --name "$cname" $restart_flag "${run_args[@]}" "$image"; then
     [[ "$lang" == "de" ]] && echo -e "${ERROR}Container $cname konnte nicht gestartet werden.${NC}" >&2 || echo -e "${ERROR}Failed to start container $cname.${NC}" >&2
     return 1
   fi
@@ -1077,6 +1103,14 @@ if [[ "$mainaction" == "1" ]]; then
       echo -e "${INFO}Starting SLSPanel Docker container...${NC}"
     fi
 
+    slspanel_stats_scheme="${SLS_STATS_SCHEME:-http}"
+    case "$slspanel_stats_scheme" in
+      http|https) ;;
+      *)
+        echo "Invalid SLS_STATS_SCHEME '$slspanel_stats_scheme': use http or https." >&2
+        exit 1
+        ;;
+    esac
     slspanel_api_url="http://${public_ip}:${sls_stats_port}"
     apikey=$(cat .apikey 2>/dev/null || echo "")
     if [[ -z "$apikey" ]]; then
@@ -1092,13 +1126,13 @@ if [[ "$mainaction" == "1" ]]; then
 
     if [[ "$enable_login" =~ ^[JjYy] ]]; then
       if [[ "$use_wud_labels" =~ ^[JjYy] ]]; then
-        docker run -d --name slspanel --restart unless-stopped \
+        PASSWORD="$slspanel_password" docker run -d --name slspanel --restart unless-stopped \
           --label "wud.watch=true" \
           --label "wud.watch.digest=true" \
           --label "wud.tag.include=^beta$" \
           -e REQUIRE_LOGIN=True \
           -e USERNAME="${slspanel_username}" \
-          -e PASSWORD="${slspanel_password}" \
+          -e PASSWORD \
           -e SLS_API_URL="${slspanel_api_url}" \
           -e SLS_API_KEY="${apikey}" \
           -e SLS_DOMAIN_IP="${public_ip}" \
@@ -1109,13 +1143,13 @@ if [[ "$mainaction" == "1" ]]; then
           -e SRTLA_PUBLISH_PORT=${srtla_port} \
           -e SLS_STATS_PORT=${sls_stats_port} \
            -e SLS_STATS_PUBLIC_DOMAIN_IP="${SLS_STATS_PUBLIC_DOMAIN_IP:-}" \
-           -e SLS_STATS_SCHEME="${SLS_STATS_SCHEME:-http}" \
+           -e SLS_STATS_SCHEME="${slspanel_stats_scheme}" \
           -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:beta
       else
-        docker run -d --name slspanel --restart unless-stopped \
+        PASSWORD="$slspanel_password" docker run -d --name slspanel --restart unless-stopped \
           -e REQUIRE_LOGIN=True \
           -e USERNAME="${slspanel_username}" \
-          -e PASSWORD="${slspanel_password}" \
+          -e PASSWORD \
           -e SLS_API_URL="${slspanel_api_url}" \
           -e SLS_API_KEY="${apikey}" \
           -e SLS_DOMAIN_IP="${public_ip}" \
@@ -1126,7 +1160,7 @@ if [[ "$mainaction" == "1" ]]; then
           -e SRTLA_PUBLISH_PORT=${srtla_port} \
           -e SLS_STATS_PORT=${sls_stats_port} \
            -e SLS_STATS_PUBLIC_DOMAIN_IP="${SLS_STATS_PUBLIC_DOMAIN_IP:-}" \
-           -e SLS_STATS_SCHEME="${SLS_STATS_SCHEME:-http}" \
+           -e SLS_STATS_SCHEME="${slspanel_stats_scheme}" \
           -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:beta
       fi
     else
@@ -1146,7 +1180,7 @@ if [[ "$mainaction" == "1" ]]; then
           -e SRTLA_PUBLISH_PORT=${srtla_port} \
           -e SLS_STATS_PORT=${sls_stats_port} \
            -e SLS_STATS_PUBLIC_DOMAIN_IP="${SLS_STATS_PUBLIC_DOMAIN_IP:-}" \
-           -e SLS_STATS_SCHEME="${SLS_STATS_SCHEME:-http}" \
+           -e SLS_STATS_SCHEME="${slspanel_stats_scheme}" \
           -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:beta
       else
         docker run -d --name slspanel --restart unless-stopped \
@@ -1161,7 +1195,7 @@ if [[ "$mainaction" == "1" ]]; then
           -e SRTLA_PUBLISH_PORT=${srtla_port} \
           -e SLS_STATS_PORT=${sls_stats_port} \
            -e SLS_STATS_PUBLIC_DOMAIN_IP="${SLS_STATS_PUBLIC_DOMAIN_IP:-}" \
-           -e SLS_STATS_SCHEME="${SLS_STATS_SCHEME:-http}" \
+           -e SLS_STATS_SCHEME="${slspanel_stats_scheme}" \
           -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:beta
       fi
     fi
