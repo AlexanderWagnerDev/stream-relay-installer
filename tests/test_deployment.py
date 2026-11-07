@@ -58,6 +58,16 @@ class DeploymentTest(unittest.TestCase):
         settings = self.render(LRTMP2_STATS_URL='https://stream.example.com:9443')['rtmppanel']['environment']
         self.assertEqual(settings['LRTMP2_STATS_URL'], 'https://stream.example.com:9443')
 
+    def test_sls_panel_stats_and_credentials(self):
+        services = self.render(SLS_STATS_PUBLIC_DOMAIN_IP='stats.example.com',
+                               SLS_STATS_SCHEME='https')
+        settings = services['slspanel']['environment']
+        self.assertEqual(settings['USERNAME'], 'admin')
+        self.assertEqual(settings['PASSWORD'], 'validation-only-password')
+        self.assertEqual(settings['SLS_STATS_PUBLIC_DOMAIN_IP'], 'stats.example.com')
+        self.assertEqual(settings['SLS_STATS_SCHEME'], 'https')
+        self.assertEqual(services['slspanel']['image'].split(':')[-1], 'latest')
+
     def test_no_login_requires_explicit_acknowledgement(self):
         denied = self.validate_upstream(self.render(REQUIRE_LOGIN='False')['rtmppanel']['environment'])
         self.assertNotEqual(denied.returncode, 0)
