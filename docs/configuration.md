@@ -6,7 +6,7 @@ Copy `.env.example` to `.env`, fill in the empty credentials, then run `docker c
 | --- | --- | --- |
 | `LRTMP2_API_TOKEN` | Shared server and panel API token; 32–256 ASCII letters/digits, `-` or `_` | required |
 | `SECRET_KEY` | Stable panel encryption/session secret; keep with panel database | required |
-| `PANEL_PASSWORD` | Panel admin password / Admin-Passwort | required |
+| `PANEL_PASSWORD` | Admin password for both panels; nonempty and not `password` for SLSPanel login / Admin-Passwort | required |
 | `PANEL_USERNAME` | Panel admin username / Benutzername | admin |
 | `REQUIRE_LOGIN` | Panel authentication / Anmeldung | True |
 | `LRTMP2_DOMAIN` | Public domain/IP used in stream URLs / Öffentliche Domain/IP | localhost |
@@ -48,9 +48,13 @@ docker compose logs srtla-server
 docker compose --profile srtla up -d
 ```
 
-SLSPanel uses host port 8000, SRTLA stats 8789, SRT publishing 4001/UDP, playback 4000/UDP and SRTLA 5000/UDP. Both panels use PANEL_USERNAME/PANEL_PASSWORD. WUD is available through the interactive installer; it is not part of this Compose stack.
+SLSPanel uses host port 8000, SRTLA stats 8789, SRT publishing 4001/UDP, playback 4000/UDP and SRTLA 5000/UDP. Both panels use PANEL_USERNAME/PANEL_PASSWORD, mapped to SLSPanel v0.0.21 USERNAME/PASSWORD. With REQUIRE_LOGIN=True, the password must not be empty or literally `password`. Use Docker Compose v2, and single-quote `.env` passwords containing `$`. Optionally set SLS_STATS_PUBLIC_DOMAIN_IP for browser-visible statistics URLs and SLS_STATS_SCHEME for http/https; the internal API address stays unchanged. WUD is available through the interactive installer; it is not part of this Compose stack.
 
-Mit `--profile srtla` den SRTLA-Server zuerst starten, den generierten Admin-API-Key aus dessen Logs nach `SLS_API_KEY` übernehmen und danach den gesamten Stack starten. SLSPanel läuft auf Port 8000. WUD ist optional im interaktiven Installer enthalten. Die Compose-Volumes sind projektbezogen und unterscheiden sich von denen des Shell-Installers.
+Mit `--profile srtla` den SRTLA-Server zuerst starten, den generierten Admin-API-Key aus dessen Logs nach `SLS_API_KEY` übernehmen und danach den gesamten Stack starten. SLSPanel läuft auf Port 8000. Bei aktivem Login ist ein nicht-leeres Passwort ungleich `password` erforderlich. Docker Compose v2 verwenden; Passwörter mit `$` in `.env` in einfache Anführungszeichen setzen. `SLS_STATS_PUBLIC_DOMAIN_IP` und `SLS_STATS_SCHEME` erlauben eine öffentliche Statistik-Domain mit HTTP/HTTPS unabhängig vom internen API-Endpunkt. WUD ist optional im interaktiven Installer enthalten. Die Compose-Volumes sind projektbezogen und unterscheiden sich von denen des Shell-Installers.
+
+The shell installer accepts `SLS_STATS_PUBLIC_DOMAIN_IP` and `SLS_STATS_SCHEME` as process environment overrides (for example, `SLS_STATS_PUBLIC_DOMAIN_IP=stats.example.com SLS_STATS_SCHEME=https bash install.sh`). On updates, legacy WEB_USERNAME/WEB_PASSWORD values migrate to USERNAME/PASSWORD unless current variables already exist. Invalid SLSPanel credentials abort an update before the running container is stopped.
+
+Der Shell-Installer akzeptiert Statistik-Einstellungen über seine Prozessumgebung. Updates migrieren alte `WEB_USERNAME`/`WEB_PASSWORD`-Werte zu `USERNAME`/`PASSWORD`; aktuelle Variablen haben Vorrang. Ungültige Anmeldedaten verhindern den Austausch des laufenden Containers.
 
 ## Installer networking / Installer-Netzwerk
 

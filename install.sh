@@ -430,32 +430,48 @@ function recreate_container() {
     '{{range $p, $confs := .HostConfig.PortBindings}}{{range $confs}}{{.HostPort}}:{{$p}} {{end}}{{end}}' \
     2>/dev/null | tr ' ' '\n' | grep -v '^$')
 
-  # Migrate legacy SLSPanel login variables while keeping all other
-  # container environment settings (including SLS_API_KEY) unchanged.
+  # Normalize SLSPanel v0.0.21 credentials, keeping existing current names.
+  # Reject insecure logins before stopping or removing the old container.
   local existing_env
   existing_env=$(docker inspect "$cname" --format \
     '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null) || return 1
+  local sls_username="" sls_password="" sls_old_username="" sls_old_password="" sls_login="false"
+  local env_entry
+  if [[ "$cname" == "slspanel" ]]; then
+    while IFS= read -r env_entry; do
+      case "$env_entry" in
+        USERNAME=*) sls_username="${env_entry#USERNAME=}" ;;
+        PASSWORD=*) sls_password="${env_entry#PASSWORD=}" ;;
+        WEB_USERNAME=*) sls_old_username="${env_entry#WEB_USERNAME=}" ;;
+        WEB_PASSWORD=*) sls_old_password="${env_entry#WEB_PASSWORD=}" ;;
+        REQUIRE_LOGIN=*) sls_login="${env_entry#REQUIRE_LOGIN=}" ;;
+      esac
+    done <<< "$existing_env"
+    sls_username="${sls_username:-$sls_old_username}"
+    sls_password="${sls_password:-$sls_old_password}"
+    case "${sls_login,,}" in
+      true|1|yes)
+        if [[ -z "$sls_password" || "$sls_password" == "password" ]]; then
+          echo "SLSPanel update blocked: REQUIRE_LOGIN needs a nonempty password other than 'password'. Change the existing container credentials first." >&2
+          return 1
+        fi
+        ;;
+    esac
+  fi
   while IFS= read -r env_entry; do
     if [[ "$cname" == "slspanel" ]]; then
       case "$env_entry" in
-        USERNAME=*)
-          if grep -q '^WEB_USERNAME=' <<< "$existing_env"; then
-            continue
-          fi
-          env_entry="WEB_USERNAME=${env_entry#USERNAME=}"
-          ;;
-        PASSWORD=*)
-          if grep -q '^WEB_PASSWORD=' <<< "$existing_env"; then
-            continue
-          fi
-          env_entry="WEB_PASSWORD=${env_entry#PASSWORD=}"
-          ;;
+        USERNAME=*|PASSWORD=*|WEB_USERNAME=*|WEB_PASSWORD=*) continue ;;
       esac
     fi
     if [[ -n "$env_entry" && "$env_entry" != PATH=* && "$env_entry" != HOME=* ]]; then
       run_args+=(-e "$env_entry")
     fi
   done <<< "$existing_env"
+  if [[ "$cname" == "slspanel" ]]; then
+    [[ -n "$sls_username" ]] && run_args+=(-e "USERNAME=$sls_username")
+    [[ -n "$sls_password" ]] && run_args+=(-e "PASSWORD=$sls_password")
+  fi
 
   if [[ "$cname" == "rtmppanel" ]]; then
     connect_rtmp_backend
@@ -1028,8 +1044,21 @@ if [[ "$mainaction" == "1" ]]; then
     if [[ "$enable_login" =~ ^[JjYy] ]]; then
       read -rp "$slspanel_username_prompt" slspanel_username
       slspanel_username=${slspanel_username:-admin}
-      read -rsp "$slspanel_password_prompt" slspanel_password
-      echo ""
+      while true; do
+        if ! read -rsp "$slspanel_password_prompt" slspanel_password; then
+          echo "" >&2
+          exit 1
+        fi
+        echo ""
+        if [[ -n "$slspanel_password" && "$slspanel_password" != "password" ]]; then
+          break
+        fi
+        if [[ "$lang" == "de" ]]; then
+          echo -e "${ERROR}Bitte ein nicht-leeres Passwort außer 'password' eingeben.${NC}" >&2
+        else
+          echo -e "${ERROR}Please enter a nonempty password other than 'password'.${NC}" >&2
+        fi
+      done
     else
       slspanel_username=""
       slspanel_password=""
@@ -1061,8 +1090,8 @@ if [[ "$mainaction" == "1" ]]; then
           --label "wud.watch.digest=true" \
           --label "wud.tag.include=^beta$" \
           -e REQUIRE_LOGIN=True \
-          -e WEB_USERNAME="${slspanel_username}" \
-          -e WEB_PASSWORD="${slspanel_password}" \
+          -e USERNAME="${slspanel_username}" \
+          -e PASSWORD="${slspanel_password}" \
           -e SLS_API_URL="${slspanel_api_url}" \
           -e SLS_API_KEY="${apikey}" \
           -e SLS_DOMAIN_IP="${public_ip}" \
@@ -1072,12 +1101,14 @@ if [[ "$mainaction" == "1" ]]; then
           -e SRT_PLAYER_PORT=${srt_player_port} \
           -e SRTLA_PUBLISH_PORT=${srtla_port} \
           -e SLS_STATS_PORT=${sls_stats_port} \
+           -e SLS_STATS_PUBLIC_DOMAIN_IP="${SLS_STATS_PUBLIC_DOMAIN_IP:-}" \
+           -e SLS_STATS_SCHEME="${SLS_STATS_SCHEME:-http}" \
           -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:beta
       else
         docker run -d --name slspanel --restart unless-stopped \
           -e REQUIRE_LOGIN=True \
-          -e WEB_USERNAME="${slspanel_username}" \
-          -e WEB_PASSWORD="${slspanel_password}" \
+          -e USERNAME="${slspanel_username}" \
+          -e PASSWORD="${slspanel_password}" \
           -e SLS_API_URL="${slspanel_api_url}" \
           -e SLS_API_KEY="${apikey}" \
           -e SLS_DOMAIN_IP="${public_ip}" \
@@ -1087,6 +1118,8 @@ if [[ "$mainaction" == "1" ]]; then
           -e SRT_PLAYER_PORT=${srt_player_port} \
           -e SRTLA_PUBLISH_PORT=${srtla_port} \
           -e SLS_STATS_PORT=${sls_stats_port} \
+           -e SLS_STATS_PUBLIC_DOMAIN_IP="${SLS_STATS_PUBLIC_DOMAIN_IP:-}" \
+           -e SLS_STATS_SCHEME="${SLS_STATS_SCHEME:-http}" \
           -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:beta
       fi
     else
@@ -1105,6 +1138,8 @@ if [[ "$mainaction" == "1" ]]; then
           -e SRT_PLAYER_PORT=${srt_player_port} \
           -e SRTLA_PUBLISH_PORT=${srtla_port} \
           -e SLS_STATS_PORT=${sls_stats_port} \
+           -e SLS_STATS_PUBLIC_DOMAIN_IP="${SLS_STATS_PUBLIC_DOMAIN_IP:-}" \
+           -e SLS_STATS_SCHEME="${SLS_STATS_SCHEME:-http}" \
           -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:beta
       else
         docker run -d --name slspanel --restart unless-stopped \
@@ -1118,6 +1153,8 @@ if [[ "$mainaction" == "1" ]]; then
           -e SRT_PLAYER_PORT=${srt_player_port} \
           -e SRTLA_PUBLISH_PORT=${srtla_port} \
           -e SLS_STATS_PORT=${sls_stats_port} \
+           -e SLS_STATS_PUBLIC_DOMAIN_IP="${SLS_STATS_PUBLIC_DOMAIN_IP:-}" \
+           -e SLS_STATS_SCHEME="${SLS_STATS_SCHEME:-http}" \
           -p ${slspanel_port}:8000/tcp alexanderwagnerdev/slspanel:beta
       fi
     fi
