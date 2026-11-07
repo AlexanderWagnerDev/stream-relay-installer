@@ -176,6 +176,23 @@ class OpenRTMPTest(unittest.TestCase):
                 calls = [json.loads(row) for row in (self.root / 'calls').read_text().splitlines()]
                 self.assertFalse(any(a[0] in ('pull', 'stop', 'rm', 'run') for a in calls))
 
+    def test_sls_panel_update_rejects_unknown_login_setting_before_stop(self):
+        (self.root / 'calls').write_text('')
+        self.env['MOCK_CONTAINERS'] = 'slspanel'
+        self.env['MOCK_CONTAINER_ENV'] = (
+            'REQUIRE_LOGIN=unexpected\n'
+            'USERNAME=admin\n'
+            'PASSWORD=secure-password\n'
+            'SLS_API_URL=http://sls-backend:8789'
+        )
+        script = self.helper_script('recreate_container slspanel image fallback')
+        result = subprocess.run(['bash', str(script)], cwd=self.root,
+                                env=self.env, capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('invalid REQUIRE_LOGIN value', result.stderr)
+        calls = [json.loads(row) for row in (self.root / 'calls').read_text().splitlines()]
+        self.assertFalse(any(a[0] in ('pull', 'stop', 'rm', 'run') for a in calls))
+
     def test_sls_panel_stats_public_url_environment(self):
         self.env['SLS_STATS_PUBLIC_DOMAIN_IP'] = 'stats.example.com'
         self.env['SLS_STATS_SCHEME'] = 'https'
