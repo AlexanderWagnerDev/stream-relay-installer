@@ -445,6 +445,7 @@ function recreate_container() {
         WEB_USERNAME=*) sls_old_username="${env_entry#WEB_USERNAME=}" ;;
         WEB_PASSWORD=*) sls_old_password="${env_entry#WEB_PASSWORD=}" ;;
         REQUIRE_LOGIN=*) sls_login="${env_entry#REQUIRE_LOGIN=}" ;;
+        *) ;; # Other environment variables are handled by the pass-through loop.
       esac
     done <<< "$existing_env"
     sls_username="${sls_username:-$sls_old_username}"
@@ -456,12 +457,18 @@ function recreate_container() {
           return 1
         fi
         ;;
+      false|0|no|off|'') ;; # Login intentionally disabled.
+      *)
+        echo "SLSPanel update blocked: invalid REQUIRE_LOGIN value '$sls_login'." >&2
+        return 1
+        ;;
     esac
   fi
   while IFS= read -r env_entry; do
     if [[ "$cname" == "slspanel" ]]; then
       case "$env_entry" in
         USERNAME=*|PASSWORD=*|WEB_USERNAME=*|WEB_PASSWORD=*) continue ;;
+        *) ;; # Keep unrelated container environment variables.
       esac
     fi
     if [[ -n "$env_entry" && "$env_entry" != PATH=* && "$env_entry" != HOME=* ]]; then
