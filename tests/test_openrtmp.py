@@ -108,32 +108,32 @@ class OpenRTMPTest(unittest.TestCase):
         calls = self.run_script(['2', '1', 'n', 'n', 'n', 'y', 'n', 'n',
                                  'n', 'y', 'y', 'y', 'admin', 'test-password', 'n'])
         panel = next(a for a in calls if a[:4] == ['run', '-d', '--name', 'slspanel'])
-        self.assertIn('WEB_USERNAME=admin', panel)
-        self.assertIn('WEB_PASSWORD=test-password', panel)
+        self.assertIn('USERNAME=admin', panel)
+        self.assertIn('PASSWORD=test-password', panel)
         self.assertIn('SLS_API_KEY=' + 'c' * 64, panel)
-        self.assertFalse(any(a.startswith('USERNAME=') or a.startswith('PASSWORD=') for a in panel))
+        self.assertFalse(any(a.startswith('WEB_USERNAME=') or a.startswith('WEB_PASSWORD=') for a in panel))
         self.assertNotIn('RTMPPanel UI:', self.last_result.stdout)
 
     def test_sls_panel_update_migrates_legacy_login_variables(self):
         self.env['MOCK_CONTAINERS'] = 'slspanel'
         self.env['MOCK_CONTAINER_ENV'] = (
             'REQUIRE_LOGIN=True\n'
-            'USERNAME=alice\n'
-            'PASSWORD=chosen-secret\n'
+            'WEB_USERNAME=alice\n'
+            'WEB_PASSWORD=chosen-secret\n'
             'SLS_API_KEY=' + 'c' * 64 + '\n'
             'SLS_API_URL=http://sls-backend:8789'
         )
         calls = self.run_script([], self.helper_script(
             'recreate_container slspanel image fallback'))
         panel = next(a for a in calls if a[:4] == ['run', '-d', '--name', 'slspanel'])
-        self.assertIn('WEB_USERNAME=alice', panel)
-        self.assertIn('WEB_PASSWORD=chosen-secret', panel)
+        self.assertIn('USERNAME=alice', panel)
+        self.assertIn('PASSWORD=chosen-secret', panel)
         self.assertIn('SLS_API_KEY=' + 'c' * 64, panel)
         self.assertIn('SLS_API_URL=http://sls-backend:8789', panel)
         self.assertIn('REQUIRE_LOGIN=True', panel)
-        self.assertFalse(any(a.startswith('USERNAME=') or a.startswith('PASSWORD=') for a in panel))
+        self.assertFalse(any(a.startswith('WEB_USERNAME=') or a.startswith('WEB_PASSWORD=') for a in panel))
 
-    def test_sls_panel_update_preserves_existing_web_credentials(self):
+    def test_sls_panel_update_prefers_current_credentials(self):
         self.env['MOCK_CONTAINERS'] = 'slspanel'
         self.env['MOCK_CONTAINER_ENV'] = (
             'USERNAME=old\n'
@@ -145,10 +145,45 @@ class OpenRTMPTest(unittest.TestCase):
         calls = self.run_script([], self.helper_script(
             'recreate_container slspanel image fallback'))
         panel = next(a for a in calls if a[:4] == ['run', '-d', '--name', 'slspanel'])
-        self.assertIn('WEB_USERNAME=new', panel)
-        self.assertIn('WEB_PASSWORD=new-secret', panel)
+        self.assertIn('USERNAME=old', panel)
+        self.assertIn('PASSWORD=old-secret', panel)
         self.assertIn('SLS_API_KEY=' + 'c' * 64, panel)
-        self.assertFalse(any(a.startswith('USERNAME=') or a.startswith('PASSWORD=') for a in panel))
+        self.assertFalse(any(a.startswith('WEB_USERNAME=') or a.startswith('WEB_PASSWORD=') for a in panel))
+
+
+    def test_sls_panel_rejects_example_password_then_accepts_secure_value(self):
+        calls = self.run_script(['2', '1', 'n', 'n', 'n', 'y', 'n', 'n',
+                                 'n', 'y', 'y', 'y', 'admin', 'password', 'better-password', 'n'])
+        panel = next(a for a in calls if a[:4] == ['run', '-d', '--name', 'slspanel'])
+        self.assertIn('PASSWORD=better-password', panel)
+        self.assertIn('Please enter a nonempty password', self.last_result.stderr)
+
+    def test_sls_panel_update_blocks_insecure_login_before_stop(self):
+        for bad_password in ['', 'password']:
+            with self.subTest(password=bad_password):
+                (self.root / 'calls').write_text('')
+                self.env['MOCK_CONTAINERS'] = 'slspanel'
+                self.env['MOCK_CONTAINER_ENV'] = (
+                    'REQUIRE_LOGIN=True\n'
+                    'USERNAME=admin\n'
+                    'PASSWORD=' + bad_password + '\n'
+                )
+                script = self.helper_script('recreate_container slspanel image fallback')
+                result = subprocess.run(['bash', str(script)], cwd=self.root,
+                                        env=self.env, capture_output=True, text=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('SLSPanel update blocked', result.stderr)
+                calls = [json.loads(row) for row in (self.root / 'calls').read_text().splitlines()]
+                self.assertFalse(any(a[0] in ('pull', 'stop', 'rm', 'run') for a in calls))
+
+    def test_sls_panel_stats_public_url_environment(self):
+        self.env['SLS_STATS_PUBLIC_DOMAIN_IP'] = 'stats.example.com'
+        self.env['SLS_STATS_SCHEME'] = 'https'
+        calls = self.run_script(['2', '1', 'n', 'n', 'n', 'y', 'n', 'n',
+                                 'n', 'y', 'y', 'y', 'admin', 'test-password', 'n'])
+        panel = next(a for a in calls if a[:4] == ['run', '-d', '--name', 'slspanel'])
+        self.assertIn('SLS_STATS_PUBLIC_DOMAIN_IP=stats.example.com', panel)
+        self.assertIn('SLS_STATS_SCHEME=https', panel)
 
     def helper_script(self, body):
         functions = SCRIPT.read_text().split('echo "Wähle Sprache / Choose language:"')[0]
